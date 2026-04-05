@@ -69,12 +69,24 @@
           </div>
         </el-form-item>
         
-        <el-form-item label="关联用户" v-if="isEdit">
-          <div class="user-info-cell" v-if="form.user_id">
-            <el-avatar :size="32" :src="form.avatar || getDefaultAvatar(form.username)" />
-            <span>{{ form.user_name || form.name }}</span>
-          </div>
-          <span v-else class="no-user">未绑定用户</span>
+        <el-form-item label="选择用户" prop="userId" v-if="isEdit">
+          <el-select v-model="form.userId" placeholder="选择要绑定的用户" style="width: 100%">
+            <el-option 
+              v-for="user in availableUsersForEdit" 
+              :key="user.id" 
+              :label="`${user.name} (${user.role === 'parent' ? '家长' : '宝宝'})`" 
+              :value="user.id"
+            >
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-avatar :size="24" :src="user.avatar || getDefaultAvatar(user.username)" />
+                <span>{{ user.name }}</span>
+                <el-tag size="small" :type="user.role === 'parent' ? 'danger' : 'success'">
+                  {{ user.role === 'parent' ? '家长' : '宝宝' }}
+                </el-tag>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="tip-text">当前绑定：{{ form.user_name || '未绑定' }}</div>
         </el-form-item>
         
         <el-form-item label="账户名称" prop="name">
@@ -120,9 +132,19 @@ const rules = {
   name: [{ required: true, message: '请输入账户名称', trigger: 'blur' }]
 }
 
-// 获取未绑定账户的用户
+// 获取未绑定账户的用户（新增时用）
 const unboundUsers = computed(() => {
   const boundUserIds = accounts.value.map(a => a.user_id).filter(Boolean)
+  return users.value.filter(u => !boundUserIds.includes(u.id))
+})
+
+// 编辑时可用的用户（包含当前已绑定的用户 + 未绑定的用户）
+const availableUsersForEdit = computed(() => {
+  const currentUserId = form.value.user_id
+  const boundUserIds = accounts.value
+    .filter(a => a.user_id !== currentUserId) // 排除当前账户已绑定的用户ID
+    .map(a => a.user_id)
+    .filter(Boolean)
   return users.value.filter(u => !boundUserIds.includes(u.id))
 })
 
@@ -166,7 +188,11 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   isEdit.value = true
   dialogTitle.value = '编辑积分账户'
-  form.value = { ...row }
+  form.value = { 
+    ...row,
+    userId: row.user_id // 设置当前绑定的用户ID
+  }
+  loadUsers() // 加载用户列表
   dialogVisible.value = true
 }
 
@@ -194,7 +220,8 @@ const handleSubmit = async () => {
     if (isEdit.value) {
       await request.put(`/account/${form.value.id}`, {
         name: form.value.name,
-        balance: form.value.balance
+        balance: form.value.balance,
+        userId: form.value.userId // 支持修改绑定用户
       })
       ElMessage.success('更新成功')
     } else {

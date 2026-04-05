@@ -85,13 +85,33 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params
-    const { name, balance } = req.body
+    const { name, balance, userId } = req.body
     const db = await getDb()
     
-    await db.run(
-      'UPDATE accounts SET name = ?, balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name, balance, id]
-    )
+    // 如果提供了 userId，检查该用户是否已被其他账户绑定
+    if (userId) {
+      const existing = await db.get(
+        'SELECT * FROM accounts WHERE user_id = ? AND id != ?',
+        [userId, id]
+      )
+      if (existing) {
+        return res.status(400).json({ code: 400, message: '该用户已被其他账户绑定' })
+      }
+    }
+    
+    // 构建更新语句
+    let updateSql = 'UPDATE accounts SET name = ?, balance = ?, updated_at = CURRENT_TIMESTAMP'
+    let params = [name, balance]
+    
+    if (userId) {
+      updateSql += ', user_id = ?'
+      params.push(userId)
+    }
+    
+    updateSql += ' WHERE id = ?'
+    params.push(id)
+    
+    await db.run(updateSql, params)
     
     const account = await db.get(`
       SELECT a.*, u.name as user_name, u.username, u.avatar 
