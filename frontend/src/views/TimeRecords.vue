@@ -5,6 +5,29 @@
         <div class="card-header">
           <span>存取明细</span>
           <div class="header-actions">
+            <!-- 家长选择宝宝账户 -->
+            <el-select 
+              v-if="isParent" 
+              v-model="selectedAccountId" 
+              placeholder="选择宝宝账户" 
+              size="small"
+              style="width: 180px; margin-right: 10px"
+              @change="handleAccountChange"
+            >
+              <el-option 
+                v-for="account in childAccounts" 
+                :key="account.id" 
+                :label="account.name" 
+                :value="account.id"
+              >
+                <div style="display: flex; align-items: center; gap: 8px">
+                  <el-avatar :size="24" :src="account.avatar || getDefaultAvatar(account.username)" />
+                  <span>{{ account.name }}</span>
+                  <el-tag type="success" size="small">{{ account.balance }}分</el-tag>
+                </div>
+              </el-option>
+            </el-select>
+            
             <el-date-picker
               v-model="dateRange"
               type="daterange"
@@ -12,7 +35,7 @@
               start-placeholder="开始"
               end-placeholder="结束"
               size="small"
-              :style="{ width: isMobile ? '220px' : '240px', marginRight: '10px' }"
+              :style="{ width: isMobile ? '180px' : '220px', marginRight: '10px' }"
             />
             <el-button type="primary" size="small" @click="handleSearch">
               <el-icon><Search /></el-icon>
@@ -89,12 +112,45 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useAccountStore } from '@/stores/account'
 import dayjs from 'dayjs'
+import request from '@/utils/request'
 
 const accountStore = useAccountStore()
 const isMobile = ref(false)
+
+// 家长相关
+const isParent = computed(() => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  return user.role === 'parent'
+})
+
+const childAccounts = ref([])
+const selectedAccountId = ref(null)
+
+const getDefaultAvatar = (username) => {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+}
+
+// 加载所有宝宝账户（家长用）
+const loadChildAccounts = async () => {
+  if (!isParent.value) return
+  try {
+    const res = await request.get('/account')
+    childAccounts.value = res.filter(a => a.username !== 'dad' && a.username !== 'mom')
+    if (childAccounts.value.length > 0 && !selectedAccountId.value) {
+      selectedAccountId.value = childAccounts.value[0].id
+    }
+  } catch (error) {
+    console.error('加载账户失败', error)
+  }
+}
+
+const handleAccountChange = () => {
+  currentPage.value = 1
+  loadData()
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -105,6 +161,7 @@ onMounted(() => {
   window.addEventListener('resize', checkMobile)
   // 初始化默认最近一周的日期
   initDefaultDateRange()
+  loadChildAccounts()
   loadData()
 })
 
@@ -145,6 +202,10 @@ const loadData = async () => {
     if (dateRange.value && dateRange.value.length === 2) {
       params.startDate = dayjs(dateRange.value[0]).format('YYYY-MM-DD')
       params.endDate = dayjs(dateRange.value[1]).format('YYYY-MM-DD')
+    }
+    // 家长查看指定宝宝账户
+    if (isParent.value && selectedAccountId.value) {
+      params.accountId = selectedAccountId.value
     }
     await accountStore.fetchTransactions(params)
     

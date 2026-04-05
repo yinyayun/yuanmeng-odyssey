@@ -11,9 +11,15 @@ export const useAccountStore = defineStore('account', () => {
   const currentBalance = computed(() => account.value?.balance || 0)
 
   const fetchAccount = async () => {
-    const data = await request.get('/account')
+    const data = await request.get('/account/my')
     account.value = data
     return data
+  }
+
+  const fetchAccountById = async (id) => {
+    const accounts = await request.get('/account')
+    account.value = accounts.find(a => a.id === id) || accounts[0]
+    return account.value
   }
 
   const fetchRules = async () => {
@@ -51,6 +57,17 @@ export const useAccountStore = defineStore('account', () => {
     return data
   }
 
+  // 家长为指定账户操作
+  const depositToAccount = async (accountId, transaction) => {
+    const data = await request.post('/transactions/deposit', { ...transaction, accountId })
+    return data
+  }
+
+  const withdrawFromAccount = async (accountId, transaction) => {
+    const data = await request.post('/transactions/withdraw', { ...transaction, accountId })
+    return data
+  }
+
   const fetchTransactions = async (params = {}) => {
     const data = await request.get('/transactions', { params })
     transactions.value = data
@@ -70,12 +87,15 @@ export const useAccountStore = defineStore('account', () => {
     stats,
     currentBalance,
     fetchAccount,
+    fetchAccountById,
     fetchRules,
     createAccount,
     saveRule,
     deleteRule,
     deposit,
     withdraw,
+    depositToAccount,
+    withdrawFromAccount,
     fetchTransactions,
     fetchStats
   }

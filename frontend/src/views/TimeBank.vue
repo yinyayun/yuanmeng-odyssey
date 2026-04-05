@@ -14,6 +14,19 @@
           <div class="balance-value" :style="{ fontSize: isMobile ? '36px' : '48px' }">{{ accountStore.currentBalance }}</div>
         </div>
       </div>
+      
+      <!-- 操作按钮 -->
+      <div class="action-buttons">
+        <el-button type="success" size="large" @click="$router.push('/time-transaction')">
+          <el-icon><CirclePlus /></el-icon> 积分存取
+        </el-button>
+        <el-button type="primary" size="large" @click="$router.push('/time-records')">
+          <el-icon><List /></el-icon> 存取明细
+        </el-button>
+        <el-button type="warning" size="large" @click="$router.push('/rules')">
+          <el-icon><Setting /></el-icon> 兑换规则
+        </el-button>
+      </div>
     </el-card>
 
     <el-row :gutter="isMobile ? 10 : 20" class="mt-20">
@@ -202,6 +215,19 @@ watch(timeRange, () => {
 .balance-value {
   font-size: 48px;
   font-weight: bold;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  background: rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.action-buttons .el-button {
+  min-width: 120px;
 }
 
 .mt-20 {

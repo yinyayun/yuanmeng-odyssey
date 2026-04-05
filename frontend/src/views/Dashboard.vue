@@ -9,7 +9,27 @@
     <!-- 欢迎语 -->
     <div class="welcome-section">
       <h1 class="magic-welcome">✨ 欢迎来到元梦大陆 ✨</h1>
-      <p class="welcome-subtitle">元宵的魔法成长之旅</p>
+      <p class="welcome-subtitle">
+        {{ isParent ? '魔法成长守护中心' : '元宵的魔法成长之旅' }}
+      </p>
+      
+      <!-- 家长选择宝宝账户 -->
+      <div v-if="isParent" class="account-selector">
+        <el-select v-model="selectedAccountId" placeholder="选择宝宝账户" size="large" @change="handleAccountChange">
+          <el-option 
+            v-for="account in childAccounts" 
+            :key="account.id" 
+            :label="`${account.name} (余额: ${account.balance}积分)`" 
+            :value="account.id"
+          >
+            <div style="display: flex; align-items: center; gap: 8px">
+              <el-avatar :size="28" :src="account.avatar || getDefaultAvatar(account.username)" />
+              <span>{{ account.name }}</span>
+              <el-tag type="success" size="small">{{ account.balance }} 积分</el-tag>
+            </div>
+          </el-option>
+        </el-select>
+      </div>
     </div>
     
     <!-- 魔法水晶余额展示 -->
@@ -177,9 +197,59 @@
 import { computed, onMounted, ref, onUnmounted } from 'vue'
 import { useAccountStore } from '@/stores/account'
 import dayjs from 'dayjs'
+import request from '@/utils/request'
 
 const accountStore = useAccountStore()
 const isMobile = ref(false)
+
+// 家长相关
+const isParent = computed(() => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  return user.role === 'parent'
+})
+
+const childAccounts = ref([])
+const selectedAccountId = ref(null)
+const selectedAccount = ref(null)
+
+const getDefaultAvatar = (username) => {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+}
+
+// 加载所有宝宝账户（家长用）
+const loadChildAccounts = async () => {
+  if (!isParent.value) return
+  try {
+    const res = await request.get('/account')
+    childAccounts.value = res.filter(a => a.username !== 'dad' && a.username !== 'mom')
+    if (childAccounts.value.length > 0 && !selectedAccountId.value) {
+      selectedAccountId.value = childAccounts.value[0].id
+      selectedAccount.value = childAccounts.value[0]
+    }
+  } catch (error) {
+    console.error('加载账户失败', error)
+  }
+}
+
+const handleAccountChange = async () => {
+  selectedAccount.value = childAccounts.value.find(a => a.id === selectedAccountId.value)
+  await loadAccountData()
+}
+
+// 加载指定账户的数据
+const loadAccountData = async () => {
+  if (isParent.value && selectedAccountId.value) {
+    // 家长查看指定宝宝的数据
+    await accountStore.fetchAccountById(selectedAccountId.value)
+    await accountStore.fetchTransactions({ accountId: selectedAccountId.value, limit: 5 })
+  } else {
+    // 宝宝查看自己的数据
+    await accountStore.fetchAccount()
+    await accountStore.fetchTransactions({ limit: 5 })
+  }
+  await accountStore.fetchRules()
+  await accountStore.fetchStats({ accountId: selectedAccountId.value })
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -219,10 +289,8 @@ const formatDate = (date) => {
 }
 
 onMounted(async () => {
-  await accountStore.fetchAccount()
-  await accountStore.fetchRules()
-  await accountStore.fetchStats()
-  await accountStore.fetchTransactions({ limit: 5 })
+  await loadChildAccounts()
+  await loadAccountData()
 })
 </script>
 
@@ -485,6 +553,16 @@ onMounted(async () => {
   font-size: 16px;
   color: #9b59b6;
   font-weight: 500;
+}
+
+.account-selector {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.account-selector .el-select {
+  width: 300px;
 }
 
 /* 魔法水晶卡片 */

@@ -1,5 +1,29 @@
 <template>
   <div class="time-transaction">
+    <!-- 家长选择宝宝 -->
+    <el-card v-if="isParent" class="mb-20 account-selector">
+      <template #header>
+        <div class="card-header">
+          <el-icon size="24"><User /></el-icon>
+          <span>选择操作账户</span>
+        </div>
+      </template>
+      <el-select v-model="selectedAccountId" placeholder="选择要为哪个宝宝操作" style="width: 100%">
+        <el-option 
+          v-for="account in childAccounts" 
+          :key="account.id" 
+          :label="`${account.name} (余额: ${account.balance}积分)`" 
+          :value="account.id"
+        >
+          <div style="display: flex; align-items: center; gap: 8px">
+            <el-avatar :size="28" :src="account.avatar || getDefaultAvatar(account.username)" />
+            <span>{{ account.name }}</span>
+            <el-tag type="success" size="small">{{ account.balance }} 积分</el-tag>
+          </div>
+        </el-option>
+      </el-select>
+    </el-card>
+    
     <el-row :gutter="isMobile ? 10 : 20">
       <el-col :xs="24" :sm="12" class="mb-10">
         <el-card class="transaction-card deposit-card">
@@ -7,6 +31,7 @@
             <div class="card-header">
               <el-icon size="24"><CirclePlus /></el-icon>
               <span>存入积分</span>
+              <span v-if="selectedAccountName" class="account-tag">{{ selectedAccountName }}</span>
             </div>
           </template>
           <el-form :model="depositForm" label-position="top">
@@ -61,6 +86,7 @@
             <div class="card-header">
               <el-icon size="24"><Remove /></el-icon>
               <span>提取积分</span>
+              <span v-if="selectedAccountName" class="account-tag">{{ selectedAccountName }}</span>
             </div>
           </template>
           <el-form :model="withdrawForm" label-position="top">
@@ -151,9 +177,44 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAccountStore } from '@/stores/account'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request'
 
 const accountStore = useAccountStore()
 const isMobile = ref(false)
+
+// 家长相关
+const isParent = computed(() => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  return user.role === 'parent'
+})
+
+const childAccounts = ref([])
+const selectedAccountId = ref(null)
+
+const selectedAccountName = computed(() => {
+  if (!isParent.value) return ''
+  const account = childAccounts.value.find(a => a.id === selectedAccountId.value)
+  return account ? account.name : ''
+})
+
+const getDefaultAvatar = (username) => {
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+}
+
+// 加载所有宝宝账户（家长用）
+const loadChildAccounts = async () => {
+  if (!isParent.value) return
+  try {
+    const res = await request.get('/account')
+    // 只显示宝宝的账户
+    childAccounts.value = res.filter(a => a.username !== 'dad' && a.username !== 'mom')
+    if (childAccounts.value.length > 0 && !selectedAccountId.value) {
+      selectedAccountId.value = childAccounts.value[0].id
+    }
+  } catch (error) {
+    console.error('加载账户失败', error)
+  }
+}
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -200,36 +261,53 @@ const withdrawPoints = computed(() => {
 })
 
 const handleDeposit = async () => {
+  if (isParent.value && !selectedAccountId.value) {
+    ElMessage.warning('请先选择宝宝账户')
+    return
+  }
   try {
     await accountStore.deposit({
       ruleId: depositForm.value.ruleId,
       timeAmount: depositForm.value.timeAmount,
-      description: depositForm.value.description
+      description: depositForm.value.description,
+      accountId: isParent.value ? selectedAccountId.value : undefined
     })
-    ElMessage.success('存入成功！')
+    ElMessage.success(`存入成功！${selectedAccountName.value ? ' - ' + selectedAccountName.value : ''}`)
     depositForm.value = { ruleId: '', timeAmount: 30, description: '' }
+    // 刷新余额
+    await loadChildAccounts()
+    await accountStore.fetchAccount()
   } catch (error) {
-    ElMessage.error('存入失败')
+    ElMessage.error(error.message || '存入失败')
   }
 }
 
 const handleWithdraw = async () => {
+  if (isParent.value && !selectedAccountId.value) {
+    ElMessage.warning('请先选择宝宝账户')
+    return
+  }
   try {
     await accountStore.withdraw({
       ruleId: withdrawForm.value.ruleId,
       timeAmount: withdrawForm.value.timeAmount,
-      description: withdrawForm.value.description
+      description: withdrawForm.value.description,
+      accountId: isParent.value ? selectedAccountId.value : undefined
     })
-    ElMessage.success('提取成功！')
+    ElMessage.success(`提取成功！${selectedAccountName.value ? ' - ' + selectedAccountName.value : ''}`)
     withdrawForm.value = { ruleId: '', timeAmount: 30, description: '' }
+    // 刷新余额
+    await loadChildAccounts()
+    await accountStore.fetchAccount()
   } catch (error) {
-    ElMessage.error('提取失败')
+    ElMessage.error(error.message || '提取失败')
   }
 }
 
 onMounted(async () => {
   await accountStore.fetchRules()
   await accountStore.fetchAccount()
+  await loadChildAccounts()
 })
 </script>
 
@@ -319,5 +397,30 @@ onMounted(async () => {
   margin: 0 0 15px 0;
   color: #606266;
   font-size: 16px;
+}
+
+.account-selector {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.account-selector :deep(.el-card__header) {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.account-selector :deep(.el-card__body) {
+  background: white;
+}
+
+.account-tag {
+  margin-left: auto;
+  background: rgba(255,255,255,0.3);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
 }
 </style>

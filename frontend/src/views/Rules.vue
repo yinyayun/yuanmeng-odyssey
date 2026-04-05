@@ -5,8 +5,8 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>赚取规则配置</span>
-              <el-button type="success" size="small" @click="openDialog('earn')">
+              <span>赚取规则{{ isParent ? '配置' : '' }}</span>
+              <el-button v-if="isParent" type="success" size="small" @click="openDialog('earn')">
                 <el-icon><Plus /></el-icon> 添加规则
               </el-button>
             </div>
@@ -19,7 +19,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="pointsPerUnit" label="积分" width="100" />
-            <el-table-column label="操作" width="120">
+            <el-table-column v-if="isParent" label="操作" width="120">
               <template #default="{ row }">
                 <el-button type="danger" link @click="deleteRule(row.id)">
                   <el-icon><Delete /></el-icon>
@@ -33,8 +33,8 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>消费规则配置</span>
-              <el-button type="danger" size="small" @click="openDialog('consume')">
+              <span>消费规则{{ isParent ? '配置' : '' }}</span>
+              <el-button v-if="isParent" type="danger" size="small" @click="openDialog('consume')">
                 <el-icon><Plus /></el-icon> 添加规则
               </el-button>
             </div>
@@ -47,7 +47,7 @@
                 {{ row.timeUnit }}分钟
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120">
+            <el-table-column v-if="isParent" label="操作" width="120">
               <template #default="{ row }">
                 <el-button type="danger" link @click="deleteRule(row.id)">
                   <el-icon><Delete /></el-icon>
@@ -59,7 +59,9 @@
       </el-col>
     </el-row>
 
+    <!-- 只有家长能看到添加规则的对话框 -->
     <el-dialog
+      v-if="isParent"
       v-model="dialogVisible"
       :title="dialogType === 'earn' ? '添加赚取规则' : '添加消费规则'"
       width="500px"
@@ -90,6 +92,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const accountStore = useAccountStore()
 const isMobile = ref(false)
+
+// 判断是否为家长
+const isParent = computed(() => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  return user.role === 'parent'
+})
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768

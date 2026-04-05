@@ -30,16 +30,26 @@ export const getDb = async () => {
 export const initDatabase = async () => {
   const database = await getDb()
   
-  // 创建账户表
+  // 创建账户表（添加 user_id 关联）
   await database.exec(`
     CREATE TABLE IF NOT EXISTS accounts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       name TEXT NOT NULL DEFAULT '元宵',
       balance INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `)
+  
+  // 检查并添加 user_id 字段（表结构迁移）
+  try {
+    await database.get('SELECT user_id FROM accounts LIMIT 1')
+  } catch (e) {
+    await database.exec('ALTER TABLE accounts ADD COLUMN user_id INTEGER')
+    console.log('已添加 user_id 字段到 accounts 表')
+  }
   
   // 创建规则表
   await database.exec(`
@@ -71,10 +81,17 @@ export const initDatabase = async () => {
     )
   `)
   
-  // 初始化默认账户
+  // 初始化默认账户（与宝宝用户绑定）
   const account = await database.get('SELECT * FROM accounts LIMIT 1')
   if (!account) {
-    await database.run('INSERT INTO accounts (name, balance) VALUES (?, ?)', ['元宵', 0])
+    // 先找到宝宝用户的ID
+    const childUser = await database.get('SELECT id FROM users WHERE username = ?', ['yuanxiao'])
+    if (childUser) {
+      await database.run(
+        'INSERT INTO accounts (user_id, name, balance) VALUES (?, ?, ?)', 
+        [childUser.id, '元宵', 0]
+      )
+    }
   }
   
   // 初始化默认规则
@@ -96,6 +113,64 @@ export const initDatabase = async () => {
         [rule.type, rule.name, rule.timeUnit, rule.pointsPerUnit]
       )
     }
+  }
+  
+  // 创建用户表（支持多角色）
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT '宝宝',
+      avatar TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  
+  // 检查并添加 avatar 字段（表结构迁移）
+  try {
+    await database.get('SELECT avatar FROM users LIMIT 1')
+  } catch (e) {
+    // avatar 字段不存在，添加它
+    await database.exec('ALTER TABLE users ADD COLUMN avatar TEXT')
+    console.log('已添加 avatar 字段到 users 表')
+  }
+  
+  // 初始化默认用户
+  const bcrypt = await import('bcryptjs')
+  
+  // 爸爸账号
+  const dad = await database.get('SELECT * FROM users WHERE username = ?', ['dad'])
+  if (!dad) {
+    const hashedPassword = await bcrypt.hash('dad123', 10)
+    await database.run(
+      'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+      ['dad', hashedPassword, '爸爸', 'parent']
+    )
+    console.log('爸爸账号已创建：用户名 dad，密码 dad123')
+  }
+  
+  // 妈妈账号
+  const mom = await database.get('SELECT * FROM users WHERE username = ?', ['mom'])
+  if (!mom) {
+    const hashedPassword = await bcrypt.hash('mom123', 10)
+    await database.run(
+      'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+      ['mom', hashedPassword, '妈妈', 'parent']
+    )
+    console.log('妈妈账号已创建：用户名 mom，密码 mom123')
+  }
+  
+  // 宝宝账号（元宵）
+  const child = await database.get('SELECT * FROM users WHERE username = ?', ['yuanxiao'])
+  if (!child) {
+    const hashedPassword = await bcrypt.hash('yuanxiao123', 10)
+    await database.run(
+      'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+      ['yuanxiao', hashedPassword, '元宵', '宝宝']
+    )
+    console.log('宝宝账号已创建：用户名 yuanxiao，密码 yuanxiao123')
   }
   
   console.log('数据库初始化完成')
