@@ -23,14 +23,40 @@ fi
 
 echo ""
 echo "[1/6] 更新系统..."
-apt-get update
-apt-get install -y curl git nginx
+# 检测包管理器
+if command -v apt-get &> /dev/null; then
+    # Debian/Ubuntu
+    apt-get update
+    apt-get install -y curl git nginx
+elif command -v yum &> /dev/null; then
+    # CentOS/RHEL
+    yum update -y
+    yum install -y curl git nginx
+elif command -v dnf &> /dev/null; then
+    # Fedora/RHEL 8+
+    dnf update -y
+    dnf install -y curl git nginx
+else
+    echo "不支持的系统，请手动安装 curl、git、nginx"
+    exit 1
+fi
 
 echo ""
 echo "[2/6] 安装 Node.js..."
 if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
-    apt-get install -y nodejs
+    if command -v apt-get &> /dev/null; then
+        # Debian/Ubuntu
+        curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
+        apt-get install -y nodejs
+    elif command -v yum &> /dev/null; then
+        # CentOS/RHEL
+        curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash -
+        yum install -y nodejs
+    elif command -v dnf &> /dev/null; then
+        # Fedora/RHEL 8+
+        curl -fsSL https://rpm.nodesource.com/setup_${NODE_VERSION}.x | bash -
+        dnf install -y nodejs
+    fi
 fi
 node -v
 npm -v
