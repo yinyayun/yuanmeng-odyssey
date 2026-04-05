@@ -1,0 +1,319 @@
+/* 元梦大陆 - Q版奇幻风主题样式 */
+
+/* ========== CSS变量定义 ========== */
+:root {
+  /* 主色调 - 梦幻紫 */
+  --fantasy-primary: #9b59b6;
+  --fantasy-primary-light: #d4a5e8;
+  --fantasy-primary-dark: #6c3483;
+  --fantasy-gradient: linear-gradient(135deg, #9b59b6 0%, #e74c3c 50%, #f39c12 100%);
+  --fantasy-gradient-purple: linear-gradient(135deg, #9b59b6 0%, #d4a5e8 100%);
+  --fantasy-gradient-pink: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+  --fantasy-gradient-orange: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
+  
+  /* 背景色 - 柔粉马卡龙 */
+  --fantasy-bg: #fef5f7;
+  --fantasy-bg-pink: #ffeef5;
+  --fantasy-bg-purple: #f5eef8;
+  --fantasy-bg-card: rgba(255, 255, 255, 0.9);
+  
+  /* 点缀色 - 活力橙 */
+  --fantasy-accent: #ff6b6b;
+  --fantasy-accent-orange: #ff9f43;
+  --fantasy-accent-yellow: #feca57;
+  --fantasy-accent-green: #48dbfb;
+  
+  /* 文字色 */
+  --fantasy-text: #2d3436;
+  --fantasy-text-light: #636e72;
+  --fantasy-text-white: #ffffff;
+  
+  /* 特效色 */
+  --fantasy-glow: rgba(155, 89, 182, 0.4);
+  --fantasy-shadow: rgba(155, 89, 182, 0.2);
+  --fantasy-crystal: rgba(212, 165, 232, 0.6);
+  
+  /* 圆角 */
+  --fantasy-radius-sm: 12px;
+  --fantasy-radius-md: 20px;
+  --fantasy-radius-lg: 28px;
+  --fantasy-radius-xl: 36px;
+  --fantasy-radius-full: 50%;
+  
+  /* 阴影 */
+  --fantasy-shadow-sm: 0 4px 15px rgba(155, 89, 182, 0.15);
+  --fantasy-shadow-md: 0 8px 25px rgba(155, 89, 182, 0.2);
+  --fantasy-shadow-lg: 0 12px 35px rgba(155, 89, 182, 0.25);
+  --fantasy-shadow-glow: 0 0 30px rgba(255, 107, 107, 0.4);
+  
+  /* 动画时间 */
+  --fantasy-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --fantasy-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ========== 全局动画 ========== */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--fantasy-glow); }
+  50% { box-shadow: 0 0 40px var(--fantasy-glow), 0 0 60px var(--fantasy-crystal); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========== 魔法水晶特效 ========== */
+.fantasy-crystal {
+  background: linear-gradient(135deg, 
+    rgba(212, 165, 232, 0.8) 0%, 
+    rgba(255, 158, 170, 0.6) 50%,
+    rgba(212, 165, 232, 0.8) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    inset 0 0 20px rgba(255, 255, 255, 0.5),
+    0 0 30px var(--fantasy-glow);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.fantasy-crystal::before {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 30%;
+  height: 30%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, transparent 100%);
+  border-radius: 50%;
+  filter: blur(5px);
+}
+
+/* ========== 魔法按钮 ========== */
+.fantasy-btn {
+  background: var(--fantasy-gradient-orange);
+  border: none;
+  border-radius: var(--fantasy-radius-xl);
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--fantasy-transition);
+  box-shadow: var(--fantasy-shadow-md);
+}
+
+.fantasy-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: 0.5s;
+}
+
+.fantasy-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: var(--fantasy-shadow-lg), var(--fantasy-shadow-glow);
+}
+
+.fantasy-btn:hover::before {
+  left: 100%;
+}
+
+.fantasy-btn:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+/* ========== 魔法卡片 ========== */
+.fantasy-card {
+  background: var(--fantasy-bg-card);
+  border-radius: var(--fantasy-radius-lg);
+  padding: 24px;
+  box-shadow: var(--fantasy-shadow-md);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+  transition: var(--fantasy-transition);
+}
+
+.fantasy-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(212, 165, 232, 0.1) 0%, transparent 70%);
+  animation: rotate-slow 20s linear infinite;
+}
+
+.fantasy-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--fantasy-shadow-lg);
+}
+
+/* ========== 魂力进度条 ========== */
+.fantasy-progress {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: var(--fantasy-radius-full);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fantasy-progress-bar {
+  height: 100%;
+  background: var(--fantasy-gradient);
+  border-radius: var(--fantasy-radius-full);
+  position: relative;
+  overflow: hidden;
+  transition: width 0.6s var(--fantasy-bounce);
+}
+
+.fantasy-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 2s infinite;
+}
+
+/* ========== 魔法光晕 ========== */
+.fantasy-glow {
+  position: relative;
+}
+
+.fantasy-glow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(circle, var(--fantasy-glow) 0%, transparent 70%);
+  z-index: -1;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ========== 撒花特效 ========== */
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  background: var(--fantasy-accent);
+  position: absolute;
+  animation: confetti-fall 3s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* ========== 魔法阵装饰 ========== */
+.magic-circle {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 3px dashed var(--fantasy-primary-light);
+  border-radius: 50%;
+  animation: rotate-slow 20s linear infinite;
+  opacity: 0.3;
+}
+
+.magic-circle::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 60%;
+  height: 60%;
+  border: 2px dashed var(--fantasy-accent-orange);
+  border-radius: 50%;
+  animation: rotate-slow 15s linear infinite reverse;
+}
+
+/* ========== 悬浮导航 ========== */
+.fantasy-nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: var(--fantasy-radius-xl);
+  box-shadow: var(--fantasy-shadow-lg);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+.fantasy-nav-item {
+  position: relative;
+  transition: var(--fantasy-transition);
+}
+
+.fantasy-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  background: var(--fantasy-gradient);
+  border-radius: 50%;
+  filter: blur(15px);
+  opacity: 0.6;
+}
+
+/* ========== 响应式适配 ========== */
+@media screen and (max-width: 768px) {
+  :root {
+    --fantasy-radius-lg: 20px;
+    --fantasy-radius-xl: 24px;
+  }
+  
+  .fantasy-card {
+    padding: 16px;
+  }
+  
+  .fantasy-btn {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+}
