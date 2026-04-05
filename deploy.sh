@@ -27,17 +27,19 @@ echo "[1/6] 更新系统..."
 if command -v apt-get &> /dev/null; then
     # Debian/Ubuntu
     apt-get update
-    apt-get install -y curl git nginx
+    apt-get install -y curl git nginx build-essential python3 g++ make
 elif command -v yum &> /dev/null; then
     # CentOS/RHEL
     yum update -y
-    yum install -y curl git nginx
+    yum groupinstall -y "Development Tools"
+    yum install -y curl git nginx python3 gcc-c++ make
 elif command -v dnf &> /dev/null; then
     # Fedora/RHEL 8+
     dnf update -y
-    dnf install -y curl git nginx
+    dnf groupinstall -y "Development Tools"
+    dnf install -y curl git nginx python3 gcc-c++ make
 else
-    echo "不支持的系统，请手动安装 curl、git、nginx"
+    echo "不支持的系统，请手动安装 curl、git、nginx、build-essential"
     exit 1
 fi
 
