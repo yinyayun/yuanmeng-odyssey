@@ -103,11 +103,22 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  // 初始化默认最近一周的日期
+  initDefaultDateRange()
+  loadData()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })
+
+// 初始化默认日期范围（最近一周）
+const initDefaultDateRange = () => {
+  const end = dayjs()
+  const start = dayjs().subtract(6, 'day')
+  dateRange.value = [start.toDate(), end.toDate()]
+}
+
 const loading = ref(false)
 const dateRange = ref([])
 const currentPage = ref(1)

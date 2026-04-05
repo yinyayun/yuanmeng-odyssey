@@ -12,7 +12,7 @@ echo "================================"
 # 配置
 APP_NAME="yuanmeng-odyssey"
 APP_DIR="/opt/$APP_NAME"
-REPO_URL="https://github.com/yourusername/yuanmeng-odyssey.git"
+REPO_URL="https://github.com/yinyayun/yuanmeng-odyssey.git"
 NODE_VERSION="20"
 
 # 检查root权限
