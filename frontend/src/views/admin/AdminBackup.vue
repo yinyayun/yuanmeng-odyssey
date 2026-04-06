@@ -75,11 +75,9 @@ const formatDate = (date) => {
 const handleLocalBackup = async () => {
   localLoading.value = true
   try {
-    const res = await request.post('/backup/local')
-    if (res.code === 200) {
-      ElMessage.success('本地备份成功')
-      backups.value.unshift(res.data)
-    }
+    const data = await request.post('/backup/local')
+    ElMessage.success('本地备份成功')
+    backups.value.unshift(data)
   } catch (error) {
     ElMessage.error(error.message || '备份失败')
   } finally {
@@ -90,10 +88,8 @@ const handleLocalBackup = async () => {
 const handleGitSync = async () => {
   gitLoading.value = true
   try {
-    const res = await request.post('/backup/git-sync')
-    if (res.code === 200) {
-      ElMessage.success('GitHub 同步成功')
-    }
+    await request.post('/backup/git-sync')
+    ElMessage.success('GitHub 同步成功')
   } catch (error) {
     ElMessage.error(error.message || '同步失败')
   } finally {

@@ -115,11 +115,9 @@ const pathForm = ref({
 // 加载设置
 const loadSettings = async () => {
   try {
-    const res = await request.get('/settings')
-    if (res.code === 200) {
-      pathForm.value.growthPlansDir = res.data['growth-plans-dir'] || ''
-      pathForm.value.mathPapersDir = res.data['math-papers-dir'] || ''
-    }
+    const data = await request.get('/settings')
+    pathForm.value.growthPlansDir = data?.['growth-plans-dir'] || ''
+    pathForm.value.mathPapersDir = data?.['math-papers-dir'] || ''
   } catch (error) {
     console.error('加载设置失败', error)
   }
@@ -142,13 +140,11 @@ const handleSavePaths = async () => {
 
 const handleTestPaths = async () => {
   try {
-    const res = await request.post('/settings/test-paths', {
+    await request.post('/settings/test-paths', {
       'growth-plans-dir': pathForm.value.growthPlansDir,
       'math-papers-dir': pathForm.value.mathPapersDir
     })
-    if (res.code === 200) {
-      ElMessage.success('路径测试通过')
-    }
+    ElMessage.success('路径测试通过')
   } catch (error) {
     ElMessage.error(error.message || '路径测试失败')
   }
@@ -194,14 +190,12 @@ const handleChangePassword = async () => {
   
   passwordLoading.value = true
   try {
-    const res = await request.post('/admin/change-password', {
+    await request.post('/admin/change-password', {
       oldPassword: passwordForm.value.oldPassword,
       newPassword: passwordForm.value.newPassword
     })
-    if (res.code === 200) {
-      ElMessage.success('密码修改成功')
-      passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
-    }
+    ElMessage.success('密码修改成功')
+    passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   } catch (error) {
     ElMessage.error(error.message || '密码修改失败')
   } finally {

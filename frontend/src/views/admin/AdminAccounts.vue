@@ -6,11 +6,21 @@
       <template #header>
         <div class="card-header">
           <span>账户列表（用户与积分账户绑定关系）</span>
-          <el-button type="primary" @click="handleAdd">新增账户</el-button>
+          <div class="header-actions">
+            <el-select v-model="selectedFamilyId" placeholder="筛选家庭" clearable style="width: 150px; margin-right: 10px">
+              <el-option 
+                v-for="family in families" 
+                :key="family.id" 
+                :label="family.name" 
+                :value="family.id"
+              />
+            </el-select>
+            <el-button type="primary" @click="handleAdd">新增账户</el-button>
+          </div>
         </div>
       </template>
       
-      <el-table :data="accounts" v-loading="loading">
+      <el-table :data="filteredAccounts" v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="关联用户" width="150">
           <template #default="{ row }">
@@ -113,12 +123,14 @@ import request from '@/utils/request'
 
 const accounts = ref([])
 const users = ref([])
+const families = ref([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增账户')
 const submitting = ref(false)
 const formRef = ref(null)
 const isEdit = ref(false)
+const selectedFamilyId = ref(null)
 
 const form = ref({
   id: null,
@@ -131,6 +143,15 @@ const rules = {
   userId: [{ required: true, message: '请选择用户', trigger: 'change' }],
   name: [{ required: true, message: '请输入账户名称', trigger: 'blur' }]
 }
+
+// 按家庭筛选的账户
+const filteredAccounts = computed(() => {
+  if (!selectedFamilyId.value) return accounts.value
+  return accounts.value.filter(a => {
+    const user = users.value.find(u => u.id === a.user_id)
+    return user?.family_id === selectedFamilyId.value
+  })
+})
 
 // 获取未绑定账户的用户（新增时用）
 const unboundUsers = computed(() => {
@@ -159,8 +180,8 @@ const getDefaultAvatar = (username) => {
 const loadAccounts = async () => {
   loading.value = true
   try {
-    const res = await request.get('/account')
-    accounts.value = res || []
+    const data = await request.get('/account')
+    accounts.value = data || []
   } catch (error) {
     ElMessage.error('加载账户失败')
   } finally {
@@ -170,10 +191,19 @@ const loadAccounts = async () => {
 
 const loadUsers = async () => {
   try {
-    const res = await request.get('/admin/users')
-    users.value = res || []
+    const data = await request.get('/admin/users')
+    users.value = data || []
   } catch (error) {
     console.error('加载用户失败', error)
+  }
+}
+
+const loadFamilies = async () => {
+  try {
+    const data = await request.get('/admin/families')
+    families.value = data || []
+  } catch (error) {
+    console.error('加载家庭失败', error)
   }
 }
 
@@ -182,6 +212,7 @@ const handleAdd = () => {
   dialogTitle.value = '新增积分账户'
   form.value = { id: null, userId: null, name: '', balance: 0 }
   loadUsers() // 重新加载用户列表
+  loadFamilies() // 加载家庭列表
   dialogVisible.value = true
 }
 
@@ -243,6 +274,7 @@ const handleSubmit = async () => {
 
 onMounted(() => {
   loadAccounts()
+  loadFamilies()
 })
 </script>
 
@@ -254,6 +286,11 @@ onMounted(() => {
 .card-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
   align-items: center;
 }
 

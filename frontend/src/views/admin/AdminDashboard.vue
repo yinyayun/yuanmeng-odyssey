@@ -72,22 +72,22 @@ const pieChart = ref(null)
 const loadStats = async () => {
   try {
     // 获取账户统计
-    const accountRes = await request.get('/account')
-    if (accountRes.code === 200) {
-      stats.value.accountCount = accountRes.data.length
-      stats.value.totalBalance = accountRes.data.reduce((sum, acc) => sum + acc.balance, 0)
+    const accounts = await request.get('/account')
+    if (accounts) {
+      stats.value.accountCount = accounts.length
+      stats.value.totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0)
     }
     
     // 获取交易统计
-    const transRes = await request.get('/transactions?page=1&pageSize=1')
-    if (transRes.code === 200) {
-      stats.value.transactionCount = transRes.data.total || 0
+    const transData = await request.get('/transactions?page=1&pageSize=1')
+    if (transData) {
+      stats.value.transactionCount = transData.total || 0
     }
     
     // 获取规则统计
-    const rulesRes = await request.get('/rules')
-    if (rulesRes.code === 200) {
-      stats.value.ruleCount = rulesRes.data.length
+    const rules = await request.get('/rules')
+    if (rules) {
+      stats.value.ruleCount = rules.length
     }
   } catch (error) {
     console.error('加载统计数据失败:', error)

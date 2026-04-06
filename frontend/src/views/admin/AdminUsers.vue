@@ -26,6 +26,12 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="family_name" label="所属家庭" width="120">
+          <template #default="{ row }">
+            <el-tag size="small" type="info" v-if="row.family_name">{{ row.family_name }}</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="创建时间">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
@@ -71,6 +77,17 @@
           </el-radio-group>
         </el-form-item>
         
+        <el-form-item label="所属家庭" prop="family_id">
+          <el-select v-model="form.family_id" placeholder="选择家庭" style="width: 100%">
+            <el-option 
+              v-for="family in families" 
+              :key="family.id" 
+              :label="family.name" 
+              :value="family.id"
+            />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="密码" prop="password" :required="!isEdit">
           <el-input 
             v-model="form.password" 
@@ -108,8 +125,12 @@ const form = ref({
   name: '',
   role: '宝宝',
   password: '',
-  avatar: ''
+  avatar: '',
+  family_id: null
 })
+
+// 家庭列表
+const families = ref([])
 
 // 预设头像选项 - 包含更多可爱女孩头像
 const avatarOptions = [
@@ -159,11 +180,20 @@ const getDefaultAvatar = (username) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 }
 
+const loadFamilies = async () => {
+  try {
+    const data = await request.get('/admin/families')
+    families.value = data || []
+  } catch (error) {
+    console.error('加载家庭失败', error)
+  }
+}
+
 const loadUsers = async () => {
   loading.value = true
   try {
-    const res = await request.get('/admin/users')
-    users.value = res
+    const data = await request.get('/admin/users')
+    users.value = data || []
   } catch (error) {
     ElMessage.error('加载用户失败')
   } finally {
@@ -180,8 +210,10 @@ const handleAdd = () => {
     name: '', 
     role: '宝宝', 
     password: '',
-    avatar: avatarOptions[6]
+    avatar: avatarOptions[6],
+    family_id: null
   }
+  loadFamilies()
   dialogVisible.value = true
 }
 
@@ -194,8 +226,10 @@ const handleEdit = (row) => {
     name: row.name,
     role: row.role,
     password: '',
-    avatar: row.avatar || getDefaultAvatar(row.username)
+    avatar: row.avatar || getDefaultAvatar(row.username),
+    family_id: row.family_id
   }
+  loadFamilies()
   dialogVisible.value = true
 }
 
@@ -224,7 +258,8 @@ const handleSubmit = async () => {
       const data = {
         name: form.value.name,
         role: form.value.role,
-        avatar: form.value.avatar
+        avatar: form.value.avatar,
+        family_id: form.value.family_id
       }
       if (form.value.password) {
         data.password = form.value.password

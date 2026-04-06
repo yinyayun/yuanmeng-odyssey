@@ -42,10 +42,41 @@
       </template>
       
       <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-select v-model="form.username" placeholder="选择用户" style="width: 100%" :loading="loadingUsers">
+        <!-- 先选择家庭 -->
+        <el-form-item label="家庭" prop="familyId">
+          <el-select 
+            v-model="selectedFamilyId" 
+            placeholder="选择你的家庭" 
+            style="width: 100%" 
+            :loading="loadingFamilies"
+            @change="handleFamilyChange"
+          >
             <el-option 
-              v-for="user in users" 
+              v-for="family in families" 
+              :key="family.id" 
+              :label="family.name" 
+              :value="family.id"
+            >
+              <div style="display: flex; align-items: center; gap: 8px">
+                <span>🏠</span>
+                <span>{{ family.name }}</span>
+                <el-tag size="small" type="info">{{ family.user_count || 0 }} 人</el-tag>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        
+        <!-- 再选择用户 -->
+        <el-form-item label="用户名" prop="username">
+          <el-select 
+            v-model="form.username" 
+            placeholder="选择用户" 
+            style="width: 100%" 
+            :loading="loadingUsers"
+            :disabled="!selectedFamilyId"
+          >
+            <el-option 
+              v-for="user in filteredUsers" 
               :key="user.username" 
               :label="`${getRoleEmoji(user.role)} ${user.name}`" 
               :value="user.username"
@@ -85,12 +116,58 @@
         </div>
         <p class="tips-text">选择你的角色，开启冒险</p>
       </div>
+      
+      <!-- 超级管理员入口 -->
+      <div class="admin-entry">
+        <el-divider>
+          <span class="divider-text">管理员通道</span>
+        </el-divider>
+        <el-button 
+          type="warning" 
+          size="small" 
+          plain
+          @click="showAdminLogin = true"
+          class="admin-btn"
+        >
+          <el-icon><Setting /></el-icon>
+          超级管理员登录
+        </el-button>
+      </div>
     </el-card>
+    
+    <!-- 超级管理员登录对话框 -->
+    <el-dialog
+      v-model="showAdminLogin"
+      title="🔐 超级管理员登录"
+      width="360px"
+      align-center
+    >
+      <el-form :model="adminForm" :rules="adminRules" ref="adminFormRef" label-width="80px">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="adminForm.username" placeholder="请输入管理员账号" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input 
+            v-model="adminForm.password" 
+            type="password" 
+            placeholder="请输入密码"
+            show-password
+            @keyup.enter="handleAdminLogin"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAdminLogin = false">取消</el-button>
+        <el-button type="primary" @click="handleAdminLogin" :loading="adminLoading">
+          登录
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
@@ -99,7 +176,16 @@ const router = useRouter()
 const formRef = ref(null)
 const loading = ref(false)
 const loadingUsers = ref(false)
+const loadingFamilies = ref(false)
 const users = ref([])
+const families = ref([])
+const selectedFamilyId = ref(null)
+
+// 根据选择的家庭过滤用户
+const filteredUsers = computed(() => {
+  if (!selectedFamilyId.value) return []
+  return users.value.filter(u => u.family_id === selectedFamilyId.value)
+})
 
 const form = reactive({
   username: '',
@@ -108,6 +194,19 @@ const form = reactive({
 
 const rules = {
   username: [{ required: true, message: '请选择用户', trigger: 'change' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+}
+
+// 超级管理员登录
+const showAdminLogin = ref(false)
+const adminFormRef = ref(null)
+const adminLoading = ref(false)
+const adminForm = reactive({
+  username: '',
+  password: ''
+})
+const adminRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
@@ -121,27 +220,42 @@ const getDefaultAvatar = (username) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 }
 
+// 加载家庭列表（公开接口）
+const loadFamilies = async () => {
+  loadingFamilies.value = true
+  try {
+    const res = await axios.get('/api/admin/families-public')
+    families.value = res.data?.data || []
+  } catch (error) {
+    console.error('加载家庭失败', error)
+    families.value = []
+  } finally {
+    loadingFamilies.value = false
+  }
+}
+
 // 加载用户列表（公开接口，不需要认证）
 const loadUsers = async () => {
   loadingUsers.value = true
   try {
-    // 使用 axios 直接请求，不经过 request 拦截器
     const res = await axios.get('/api/admin/users-public')
-    users.value = res.data.data || []
+    users.value = res.data?.data || []
   } catch (error) {
     console.error('加载用户失败', error)
-    // 如果接口不存在，使用默认用户
-    users.value = [
-      { username: 'dad', name: '爸爸', role: 'parent' },
-      { username: 'mom', name: '妈妈', role: 'parent' },
-      { username: 'yuanxiao', name: '元宵', role: '宝宝' }
-    ]
+    users.value = []
   } finally {
     loadingUsers.value = false
   }
 }
 
+// 家庭选择变化
+const handleFamilyChange = () => {
+  // 清空已选用户
+  form.username = ''
+}
+
 onMounted(() => {
+  loadFamilies()
   loadUsers()
 })
 
@@ -152,21 +266,63 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res = await axios.post('/api/admin/login', form)
+    
+    if (res.data?.code !== 200) {
+      throw new Error(res.data?.message || '登录失败')
+    }
+    
     const data = res.data.data
     
-    if (res.data.code !== 200) {
-      throw new Error(res.data.message || '登录失败')
+    // 检查是否为超级管理员
+    if (data.isAdminOnly) {
+      ElMessage.error('超级管理员请使用管理员通道登录')
+      loading.value = false
+      return
     }
     
     localStorage.setItem('user', JSON.stringify(data))
     ElMessage.success(`欢迎，${data.name}！`)
     
-    // 所有用户都进入主页面
+    // 家长/宝宝进入主页面
     router.push('/')
   } catch (error) {
     ElMessage.error(error.message || '登录失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 超级管理员登录
+const handleAdminLogin = async () => {
+  const valid = await adminFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  
+  adminLoading.value = true
+  try {
+    const res = await axios.post('/api/admin/login', adminForm)
+    
+    if (res.data?.code !== 200) {
+      throw new Error(res.data?.message || '登录失败')
+    }
+    
+    const data = res.data.data
+    
+    // 检查是否为超级管理员
+    if (!data.isAdminOnly) {
+      ElMessage.error('普通用户请使用上方登录入口')
+      adminLoading.value = false
+      return
+    }
+    
+    localStorage.setItem('user', JSON.stringify(data))
+    ElMessage.success(`欢迎，${data.name}！`)
+    
+    // 超级管理员进入后台管理
+    router.push('/admin')
+  } catch (error) {
+    ElMessage.error(error.message || '登录失败')
+  } finally {
+    adminLoading.value = false
   }
 }
 </script>

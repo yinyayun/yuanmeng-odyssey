@@ -11,12 +11,13 @@ const requireAuth = (to, from, next) => {
   }
 }
 
-// 路由守卫 - 检查家长权限（管理后台专用）
-const requireParent = (to, from, next) => {
+// 路由守卫 - 检查超级管理员权限（管理后台专用）
+const requireAdmin = (to, from, next) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   if (!user.username) {
     next('/login')
-  } else if (user.role !== 'parent') {
+  } else if (user.role !== 'admin') {
+    // 非管理员重定向到首页
     next('/')
   } else {
     next()
@@ -81,12 +82,12 @@ const routes = [
     component: () => import('@/views/Login.vue'),
     meta: { title: '登录' }
   },
-  // 管理后台路由（仅家长可访问）
+  // 管理后台路由（仅超级管理员可访问）
   {
     path: '/admin',
     component: () => import('@/views/AdminPanel.vue'),
     redirect: '/admin/dashboard',
-    beforeEnter: requireParent,
+    beforeEnter: requireAdmin,
     children: [
       {
         path: 'dashboard',
@@ -105,6 +106,12 @@ const routes = [
         name: 'AdminUsers',
         component: () => import('@/views/admin/AdminUsers.vue'),
         meta: { title: '用户管理' }
+      },
+      {
+        path: 'families',
+        name: 'AdminFamilies',
+        component: () => import('@/views/admin/AdminFamilies.vue'),
+        meta: { title: '家庭管理' }
       },
       {
         path: 'backup',

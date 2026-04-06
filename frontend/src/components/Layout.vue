@@ -117,18 +117,6 @@
           <div class="header-title">{{ $route.meta.title }}</div>
         </div>
         <div class="header-right">
-          <!-- 家长显示管理后台入口 -->
-          <el-button 
-            v-if="isParent" 
-            type="warning" 
-            size="small" 
-            class="admin-btn"
-            @click="$router.push('/admin')"
-          >
-            <el-icon><Setting /></el-icon>
-            <span class="pc-only">管理后台</span>
-          </el-button>
-          
           <div class="user-info" @click="handleUserClick">
             <el-avatar :size="isMobile ? 32 : 40" :src="userAvatar" />
             <span class="username pc-only">{{ userName }}</span>
@@ -160,7 +148,6 @@ const user = computed(() => {
 
 const userName = computed(() => user.value.name || '访客')
 const userRole = computed(() => user.value.role || '')
-const isParent = computed(() => user.value.role === 'parent')
 
 const userAvatar = computed(() => {
   // 优先使用用户配置的头像
@@ -326,19 +313,6 @@ const handleUserClick = () => {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.admin-btn {
-  background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%);
-  border: none;
-  color: white;
-  font-weight: bold;
-}
-
-.admin-btn:hover {
-  background: linear-gradient(135deg, #e67e22 0%, #c0392b 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
 
 .user-info {
