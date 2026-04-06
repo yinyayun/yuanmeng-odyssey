@@ -81,6 +81,17 @@ export const initDatabase = async () => {
     )
   `)
   
+  // 创建设置表（存储系统配置）
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT,
+      description TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  
   // 初始化默认账户（与宝宝用户绑定）
   const account = await database.get('SELECT * FROM accounts LIMIT 1')
   if (!account) {

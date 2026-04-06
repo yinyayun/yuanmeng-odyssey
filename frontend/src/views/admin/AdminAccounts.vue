@@ -282,4 +282,26 @@ onMounted(() => {
 .tip-text a:hover {
   text-decoration: underline;
 }
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .admin-accounts {
+    padding: 5px;
+  }
+  
+  .admin-accounts h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  :deep(.el-dialog) {
+    width: 95% !important;
+  }
+}
 </style>

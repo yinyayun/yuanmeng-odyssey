@@ -1,8 +1,53 @@
 <template>
   <div class="admin-panel">
     <el-container>
-      <!-- 侧边栏 -->
-      <el-aside width="200px" class="admin-aside">
+      <!-- 移动端抽屉菜单 -->
+      <el-drawer
+        v-model="drawerVisible"
+        :size="'70%'"
+        :with-header="false"
+        direction="ltr"
+        class="mobile-drawer"
+      >
+        <div class="mobile-sidebar">
+          <div class="admin-logo">
+            <span>🔧 管理后台</span>
+          </div>
+          <el-menu
+            :default-active="activeMenu"
+            class="admin-menu"
+            router
+            background-color="#2c3e50"
+            text-color="#ecf0f1"
+            active-text-color="#ffd700"
+            @select="drawerVisible = false"
+          >
+            <el-menu-item index="/admin/dashboard">
+              <el-icon><DataLine /></el-icon>
+              <span>数据概览</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/accounts">
+              <el-icon><Wallet /></el-icon>
+              <span>积分账户</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/users">
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/backup">
+              <el-icon><Download /></el-icon>
+              <span>数据备份</span>
+            </el-menu-item>
+            <el-menu-item index="/admin/settings">
+              <el-icon><Setting /></el-icon>
+              <span>系统设置</span>
+            </el-menu-item>
+          </el-menu>
+        </div>
+      </el-drawer>
+
+      <!-- PC端侧边栏 -->
+      <el-aside width="200px" class="admin-aside pc-only">
         <div class="admin-logo">
           <span>🔧 管理后台</span>
         </div>
@@ -41,7 +86,17 @@
       <el-container>
         <el-header class="admin-header">
           <div class="header-left">
-            <el-button type="primary" size="small" @click="$router.push('/')">
+            <!-- 移动端菜单按钮 -->
+            <el-button 
+              class="mobile-menu-btn mobile-only" 
+              type="primary" 
+              size="small"
+              @click="drawerVisible = true"
+            >
+              <el-icon><Menu /></el-icon>
+              <span style="margin-left: 4px">菜单</span>
+            </el-button>
+            <el-button type="primary" size="small" @click="$router.push('/')" class="pc-only">
               <el-icon><HomeFilled /></el-icon>
               返回主页
             </el-button>
@@ -64,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
@@ -78,6 +133,23 @@ const user = computed(() => {
 
 const username = computed(() => user.value.name || '管理员')
 const activeMenu = computed(() => route.path)
+
+// 移动端菜单抽屉
+const drawerVisible = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 
 const handleLogout = async () => {
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
@@ -172,5 +244,51 @@ const handleLogout = async () => {
 .admin-main {
   background: #f0f2f5;
   padding: 20px;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .pc-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  .admin-header {
+    padding: 0 10px;
+  }
+  
+  .header-left {
+    gap: 8px;
+  }
+  
+  .welcome-text {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  
+  .admin-main {
+    padding: 10px;
+  }
+  
+  .mobile-sidebar {
+    height: 100%;
+    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+  }
+  
+  .mobile-sidebar .admin-logo {
+    border-bottom: 1px solid #1f2d3d;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
 }
 </style>

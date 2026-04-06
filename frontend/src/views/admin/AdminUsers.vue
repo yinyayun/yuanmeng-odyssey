@@ -280,4 +280,30 @@ onMounted(() => {
   border-color: #409eff;
   box-shadow: 0 0 10px rgba(64, 158, 255, 0.5);
 }
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .admin-users {
+    padding: 5px;
+  }
+  
+  .admin-users h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  :deep(.el-dialog) {
+    width: 95% !important;
+  }
+  
+  .avatar-selector {
+    justify-content: center;
+  }
+}
 </style>
