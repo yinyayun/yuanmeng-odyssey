@@ -61,6 +61,9 @@
                 <el-button type="primary" size="small" @click="openFullscreen" v-if="isTextFile(currentFile.name)">
                   <el-icon><FullScreen /></el-icon> 全屏查看
                 </el-button>
+                <el-button type="info" size="small" @click="printFile" v-if="isTextFile(currentFile.name)">
+                  <el-icon><Printer /></el-icon> 打印/PDF
+                </el-button>
                 <el-button type="primary" size="small" @click="previewFile" v-if="isPdf(currentFile.name)">
                   <el-icon><View /></el-icon> 预览
                 </el-button>
@@ -127,6 +130,7 @@ import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { isPdf, isWord, isMarkdown, isHtml, isTextFile, getFileType } from '@/utils/fileTypes'
+import { FullScreen, View, Download, Folder, Document, Printer, Search } from '@element-plus/icons-vue'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -231,6 +235,131 @@ const downloadFile = () => {
   const url = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&type=math-papers&download=true`
   window.open(url, '_blank')
   ElMessage.success('开始下载')
+}
+
+// 打印功能（浏览器打印为PDF）
+const printFile = () => {
+  if (!currentFile.value || !isTextFile(currentFile.value.name)) return
+  
+  // 创建打印窗口
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    ElMessage.warning('请允许弹出窗口以使用打印功能')
+    return
+  }
+  
+  const title = currentFile.value.name.replace(/\.[^/.]+$/, '')
+  const content = renderedContent.value
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${title}</title>
+      <style>
+        @media print {
+          @page { margin: 15mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        body {
+          font-family: "Segoe UI", "Microsoft YaHei", "微软雅黑", sans-serif;
+          line-height: 1.8;
+          color: #333;
+          max-width: 210mm;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        h1, h2, h3, h4 { color: #2c3e50; margin-top: 1.5em; }
+        h1 { font-size: 24px; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { font-size: 20px; border-bottom: 1px solid #bdc3c7; padding-bottom: 8px; }
+        code {
+          background: #f4f4f4;
+          padding: 2px 6px;
+          border-radius: 3px;
+          font-family: "Consolas", monospace;
+        }
+        pre {
+          background: #f8f8f8;
+          padding: 15px;
+          border-radius: 5px;
+          overflow-x: auto;
+          border-left: 4px solid #3498db;
+        }
+        blockquote {
+          border-left: 4px solid #3498db;
+          margin: 0;
+          padding: 10px 20px;
+          background: #f9f9f9;
+          color: #555;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 15px 0;
+        }
+        th, td {
+          border: 1px solid #ddd;
+          padding: 10px;
+          text-align: left;
+        }
+        th { background: #f4f4f4; }
+        img { max-width: 100%; height: auto; }
+        .print-header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding-bottom: 15px;
+          border-bottom: 1px solid #eee;
+        }
+        .print-header h1 { margin: 0; border: none; }
+        .print-footer {
+          margin-top: 40px;
+          padding-top: 15px;
+          border-top: 1px solid #eee;
+          text-align: center;
+          font-size: 12px;
+          color: #999;
+        }
+        .print-btn {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 10px 20px;
+          background: #3498db;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+        .print-btn:hover { background: #2980b9; }
+        @media print {
+          .print-btn, .print-footer { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <button class="print-btn" onclick="window.print()">🖨️ 打印 / 保存为PDF</button>
+      <div class="print-header">
+        <h1>${title}</h1>
+      </div>
+      <div class="content">
+        ${content}
+      </div>
+      <div class="print-footer">
+        来自元梦大陆 - 数学能充电站
+      </div>
+      <script>
+        // 页面加载完成后自动聚焦，方便用户直接按 Ctrl+P 打印
+        window.onload = function() {
+          document.querySelector('.print-btn').focus();
+        };
+      <\/script>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  ElMessage.success('已打开打印页面，点击"打印 / 保存为PDF"按钮即可')
 }
 
 onMounted(() => {
