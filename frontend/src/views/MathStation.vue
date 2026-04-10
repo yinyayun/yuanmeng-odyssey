@@ -174,13 +174,13 @@ const handleNodeClick = (data) => {
 
 const previewFile = () => {
   if (!currentFile.value) return
-  previewUrl.value = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}`
+  previewUrl.value = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&type=math-papers`
   previewVisible.value = true
 }
 
 const downloadFile = () => {
   if (!currentFile.value) return
-  const url = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&download=true`
+  const url = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&type=math-papers&download=true`
   window.open(url, '_blank')
   ElMessage.success('开始下载')
 }
