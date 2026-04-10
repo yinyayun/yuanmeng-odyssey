@@ -144,6 +144,21 @@ const md = new MarkdownIt({
   typographer: true
 })
 
+// 文件类型判断函数（必须在模板使用前定义）
+const isPdf = (filename) => filename?.toLowerCase().endsWith('.pdf') || false
+const isWord = (filename) => {
+  if (!filename) return false
+  const ext = filename.toLowerCase()
+  return ext.endsWith('.doc') || ext.endsWith('.docx')
+}
+const isMarkdown = (filename) => {
+  if (!filename) return false
+  const ext = filename.toLowerCase()
+  return ext.endsWith('.md') || ext.endsWith('.markdown')
+}
+const isHtml = (filename) => filename?.toLowerCase().endsWith('.html') || false
+const isTextFile = (filename) => isMarkdown(filename) || isHtml(filename)
+
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
 }
@@ -177,18 +192,6 @@ const handleCascaderChange = (value) => {
     handleNodeClick(file)
   }
 }
-
-const isPdf = (filename) => filename.toLowerCase().endsWith('.pdf')
-const isWord = (filename) => {
-  const ext = filename.toLowerCase()
-  return ext.endsWith('.doc') || ext.endsWith('.docx')
-}
-const isMarkdown = (filename) => {
-  const ext = filename.toLowerCase()
-  return ext.endsWith('.md') || ext.endsWith('.markdown')
-}
-const isHtml = (filename) => filename.toLowerCase().endsWith('.html')
-const isTextFile = (filename) => isMarkdown(filename) || isHtml(filename)
 
 const getFileType = (filename) => {
   if (isPdf(filename)) return 'PDF 文档'
