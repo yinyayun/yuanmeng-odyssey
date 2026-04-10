@@ -45,6 +45,7 @@
                   <el-icon v-if="data.type === 'dir'" color="#409eff"><Folder /></el-icon>
                   <el-icon v-else-if="isPdf(data.name)" color="#f56c6c"><Document /></el-icon>
                   <el-icon v-else-if="isWord(data.name)" color="#409eff"><Document /></el-icon>
+                  <el-icon v-else-if="isMarkdown(data.name)" color="#67c23a"><Document /></el-icon>
                   <el-icon v-else color="#909399"><Document /></el-icon>
                   <span class="node-label">{{ node.label }}</span>
                 </span>
@@ -53,36 +54,57 @@
           </div>
         </el-col>
         <el-col :xs="24" :sm="18">
-          <div class="file-preview" v-if="currentFile">
+          <div class="content-preview" v-if="currentFile">
             <div class="file-info">
-              <div class="file-title">
-                <el-icon size="24" color="#f56c6c" v-if="isPdf(currentFile.name)"><Document /></el-icon>
-                <el-icon size="24" color="#409eff" v-else-if="isWord(currentFile.name)"><Document /></el-icon>
-                <h3>{{ currentFile.name }}</h3>
-              </div>
+              <h3>{{ currentFile.name }}</h3>
               <div class="file-actions">
-                <el-button type="primary" @click="previewFile" v-if="isPdf(currentFile.name)">
+                <el-button type="primary" size="small" @click="openFullscreen" v-if="isTextFile(currentFile.name)">
+                  <el-icon><FullScreen /></el-icon> 全屏查看
+                </el-button>
+                <el-button type="primary" size="small" @click="previewFile" v-if="isPdf(currentFile.name)">
                   <el-icon><View /></el-icon> 预览
                 </el-button>
-                <el-button type="success" @click="downloadFile">
+                <el-button type="success" size="small" @click="downloadFile">
                   <el-icon><Download /></el-icon> 下载
                 </el-button>
               </div>
             </div>
-            <div class="file-meta">
+            <!-- 文本内容展示（HTML/Markdown） -->
+            <div v-if="isTextFile(currentFile.name)" class="html-content" v-html="renderedContent"></div>
+            <!-- PDF/Word 文件信息展示 -->
+            <div v-else class="file-meta">
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="文件类型">{{ getFileType(currentFile.name) }}</el-descriptions-item>
                 <el-descriptions-item label="文件大小">{{ currentFile.size || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="修改时间">{{ currentFile.mtime || '-' }}</el-descriptions-item>
                 <el-descriptions-item label="文件路径">{{ currentFile.path }}</el-descriptions-item>
               </el-descriptions>
+              <el-alert
+                v-if="isWord(currentFile.name)"
+                title="Word 文件暂不支持在线预览，请下载后查看"
+                type="info"
+                :closable="false"
+                style="margin-top: 20px;"
+              />
             </div>
           </div>
-          <el-empty v-else description="请选择文件" />
+          <el-empty v-else description="请选择文件查看内容" />
         </el-col>
       </el-row>
     </el-card>
 
+    <!-- 全屏查看对话框 -->
+    <el-dialog
+      v-model="fullscreenVisible"
+      :title="currentFile?.name"
+      width="90%"
+      top="5vh"
+      destroy-on-close
+    >
+      <div class="fullscreen-content" v-html="renderedContent"></div>
+    </el-dialog>
+
+    <!-- PDF 预览对话框 -->
     <el-dialog
       v-model="previewVisible"
       :title="currentFile?.name"
@@ -103,14 +125,24 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import MarkdownIt from 'markdown-it'
 
 const fileTree = ref([])
 const currentFile = ref(null)
+const fileContent = ref('')
 const searchKeyword = ref('')
 const previewVisible = ref(false)
 const previewUrl = ref('')
+const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
+
+// 初始化 Markdown 渲染器
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -151,11 +183,29 @@ const isWord = (filename) => {
   const ext = filename.toLowerCase()
   return ext.endsWith('.doc') || ext.endsWith('.docx')
 }
+const isMarkdown = (filename) => {
+  const ext = filename.toLowerCase()
+  return ext.endsWith('.md') || ext.endsWith('.markdown')
+}
+const isHtml = (filename) => filename.toLowerCase().endsWith('.html')
+const isTextFile = (filename) => isMarkdown(filename) || isHtml(filename)
+
 const getFileType = (filename) => {
   if (isPdf(filename)) return 'PDF 文档'
   if (isWord(filename)) return 'Word 文档'
+  if (isMarkdown(filename)) return 'Markdown 文档'
+  if (isHtml(filename)) return 'HTML 文档'
   return '其他文件'
 }
+
+// 渲染内容（HTML 直接显示，Markdown 需要转换）
+const renderedContent = computed(() => {
+  if (!fileContent.value) return ''
+  if (currentFile.value && isMarkdown(currentFile.value.name)) {
+    return md.render(fileContent.value)
+  }
+  return fileContent.value
+})
 
 const loadFileTree = async () => {
   try {
@@ -166,10 +216,25 @@ const loadFileTree = async () => {
   }
 }
 
-const handleNodeClick = (data) => {
+const handleNodeClick = async (data) => {
   if (data.type === 'file') {
     currentFile.value = data
+    fileContent.value = ''
+    
+    // 如果是文本文件，加载内容
+    if (isTextFile(data.name)) {
+      try {
+        const content = await request.get(`/files/content?path=${encodeURIComponent(data.path)}&type=math-papers`)
+        fileContent.value = content
+      } catch (error) {
+        fileContent.value = '<p style="color: red">加载失败</p>'
+      }
+    }
   }
+}
+
+const openFullscreen = () => {
+  fullscreenVisible.value = true
 }
 
 const previewFile = () => {
@@ -224,7 +289,7 @@ onUnmounted(() => {
   margin-left: 4px;
 }
 
-.file-preview {
+.content-preview {
   padding: 20px;
 }
 
@@ -237,13 +302,7 @@ onUnmounted(() => {
   border-bottom: 1px solid #ebeef5;
 }
 
-.file-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.file-title h3 {
+.file-info h3 {
   margin: 0;
   color: #303133;
 }
@@ -255,6 +314,131 @@ onUnmounted(() => {
 
 .file-meta {
   margin-top: 20px;
+}
+
+/* 内容展示样式（与智慧树洞一致） */
+.html-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  min-height: 400px;
+  overflow: auto;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.html-content :deep(*) {
+  max-width: 100%;
+}
+
+.html-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.html-content :deep(h1),
+.html-content :deep(h2),
+.html-content :deep(h3),
+.html-content :deep(h4),
+.html-content :deep(h5),
+.html-content :deep(h6) {
+  margin: 20px 0 12px 0;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.html-content :deep(ul),
+.html-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.html-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.html-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.html-content :deep(th),
+.html-content :deep(td) {
+  border: 1px solid #dcdfe6;
+  padding: 12px;
+  text-align: left;
+}
+
+.html-content :deep(th) {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+
+.html-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 20px;
+  border-left: 4px solid #409eff;
+  background: #f5f7fa;
+  color: #606266;
+}
+
+.html-content :deep(pre) {
+  background: #f5f7fa;
+  padding: 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.html-content :deep(code) {
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.html-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+
+/* 全屏模式样式 */
+.fullscreen-content {
+  min-height: 70vh;
+  padding: 30px;
+  background: #fff;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.fullscreen-content :deep(*) {
+  max-width: 100%;
+}
+
+.fullscreen-content :deep(p) {
+  margin: 14px 0;
+  line-height: 1.9;
+  font-size: 16px;
+}
+
+.fullscreen-content :deep(h1) {
+  font-size: 28px;
+  margin: 24px 0 16px 0;
+}
+
+.fullscreen-content :deep(h2) {
+  font-size: 24px;
+  margin: 22px 0 14px 0;
+}
+
+.fullscreen-content :deep(h3) {
+  font-size: 20px;
+  margin: 20px 0 12px 0;
 }
 
 .mobile-file-select {
@@ -271,8 +455,13 @@ onUnmounted(() => {
     font-size: 16px;
   }
   
-  .file-preview {
+  .content-preview {
     padding: 10px;
+  }
+  
+  .html-content {
+    padding: 10px;
+    min-height: 300px;
   }
   
   .file-info {

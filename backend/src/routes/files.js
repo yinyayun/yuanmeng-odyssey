@@ -113,11 +113,12 @@ router.get('/math-papers', async (req, res) => {
 router.get('/content', async (req, res) => {
   try {
     const BASE_DIRS = await getBaseDirs()
-    const { path: filePath } = req.query
-    const fullPath = path.join(BASE_DIRS['growth-plans'], filePath)
+    const { path: filePath, type = 'growth-plans' } = req.query
+    const baseDir = BASE_DIRS[type] || BASE_DIRS['growth-plans']
+    const fullPath = path.join(baseDir, filePath)
     
     // 安全检查：确保路径在允许目录内
-    if (!fullPath.startsWith(BASE_DIRS['growth-plans'])) {
+    if (!fullPath.startsWith(baseDir)) {
       return res.status(403).json({ code: 403, message: '非法路径' })
     }
     
