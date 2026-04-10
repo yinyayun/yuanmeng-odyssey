@@ -145,8 +145,8 @@ build_frontend() {
     echo ""
     echo "[6/6] 构建前端..."
     cd $APP_DIR/frontend
-    # 限制内存使用，防止 OOM
-    NODE_OPTIONS="--max-old-space-size=1024" npm run build
+    # 限制内存使用，防止 OOM（低内存机器需要添加交换空间）
+    NODE_OPTIONS="--max-old-space-size=768" npm run build
 }
 
 # 显示 Nginx 配置提示

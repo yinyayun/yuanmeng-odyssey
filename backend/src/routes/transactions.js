@@ -5,13 +5,13 @@ import { authMiddleware } from '../middleware/auth.js'
 
 const router = express.Router()
 
-// 辅助函数：获取账户（支持家长为指定账户操作）
+// 辅助函数：获取账户（支持家长/管理员为指定账户操作）
 const getTargetAccount = async (db, req) => {
   const { accountId } = req.body
   const user = req.session.user
   
-  // 如果是家长且指定了账户ID，使用指定账户
-  if (user.role === 'parent' && accountId) {
+  // 如果是家长或管理员且指定了账户ID，使用指定账户
+  if ((user.role === 'parent' || user.role === 'admin') && accountId) {
     const account = await db.get('SELECT * FROM accounts WHERE id = ?', [accountId])
     if (account) return account
   }

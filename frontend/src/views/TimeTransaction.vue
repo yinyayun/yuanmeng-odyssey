@@ -202,13 +202,18 @@ const getDefaultAvatar = (username) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 }
 
-// 加载所有宝宝账户（家长用）
+// 加载所有宝宝账户（家长/管理员用）
 const loadChildAccounts = async () => {
   if (!isParent.value) return
   try {
     const res = await request.get('/account')
-    // 只显示宝宝的账户
-    childAccounts.value = res.filter(a => a.username !== 'dad' && a.username !== 'mom')
+    // 管理员显示所有账户，家长只显示宝宝账户
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    if (user.role === 'admin') {
+      childAccounts.value = res
+    } else {
+      childAccounts.value = res.filter(a => a.username !== 'dad' && a.username !== 'mom')
+    }
     if (childAccounts.value.length > 0 && !selectedAccountId.value) {
       selectedAccountId.value = childAccounts.value[0].id
     }
@@ -286,6 +291,13 @@ const handleDeposit = async () => {
 }
 
 const handleWithdraw = async () => {
+  console.log('提取积分 - 开始', {
+    isParent: isParent.value,
+    selectedAccountId: selectedAccountId.value,
+    currentBalance: accountStore.currentBalance,
+    withdrawPoints: withdrawPoints.value
+  })
+  
   if (isParent.value && !selectedAccountId.value) {
     ElMessage.warning('请先选择宝宝账户')
     return
@@ -297,18 +309,22 @@ const handleWithdraw = async () => {
   }
   withdrawLoading.value = true
   try {
-    await accountStore.withdraw({
+    const params = {
       ruleId: withdrawForm.value.ruleId,
       timeAmount: withdrawForm.value.timeAmount,
       description: withdrawForm.value.description,
       accountId: isParent.value ? selectedAccountId.value : undefined
-    })
+    }
+    console.log('提取积分 - 请求参数:', params)
+    
+    await accountStore.withdraw(params)
     ElMessage.success(`提取成功！${selectedAccountName.value ? ' - ' + selectedAccountName.value : ''}`)
     withdrawForm.value = { ruleId: '', timeAmount: 30, description: '' }
     // 刷新余额
     await loadChildAccounts()
     await accountStore.fetchAccount()
   } catch (error) {
+    console.error('提取积分 - 错误:', error)
     ElMessage.error(error.message || '提取失败')
   } finally {
     withdrawLoading.value = false
