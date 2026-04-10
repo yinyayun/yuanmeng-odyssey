@@ -15,9 +15,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'element-plus': ['element-plus'],
           'echarts': ['echarts', 'vue-echarts'],
-          'vendor': ['vue', 'vue-router', 'pinia', 'axios', 'dayjs']
+          'vendor': ['vue', 'vue-router', 'pinia', 'axios', 'dayjs', 'element-plus', 'markdown-it']
         }
       }
     }
