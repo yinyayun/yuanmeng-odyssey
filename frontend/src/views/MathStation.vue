@@ -126,6 +126,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
+import { isPdf, isWord, isMarkdown, isHtml, isTextFile, getFileType } from '@/utils/fileTypes'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -143,21 +144,6 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true
 })
-
-// 文件类型判断函数（必须在模板使用前定义）
-const isPdf = (filename) => filename?.toLowerCase().endsWith('.pdf') || false
-const isWord = (filename) => {
-  if (!filename) return false
-  const ext = filename.toLowerCase()
-  return ext.endsWith('.doc') || ext.endsWith('.docx')
-}
-const isMarkdown = (filename) => {
-  if (!filename) return false
-  const ext = filename.toLowerCase()
-  return ext.endsWith('.md') || ext.endsWith('.markdown')
-}
-const isHtml = (filename) => filename?.toLowerCase().endsWith('.html') || false
-const isTextFile = (filename) => isMarkdown(filename) || isHtml(filename)
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
@@ -193,13 +179,7 @@ const handleCascaderChange = (value) => {
   }
 }
 
-const getFileType = (filename) => {
-  if (isPdf(filename)) return 'PDF 文档'
-  if (isWord(filename)) return 'Word 文档'
-  if (isMarkdown(filename)) return 'Markdown 文档'
-  if (isHtml(filename)) return 'HTML 文档'
-  return '其他文件'
-}
+// getFileType 已从 @/utils/fileTypes 导入
 
 // 渲染内容（HTML 直接显示，Markdown 需要转换）
 const renderedContent = computed(() => {
