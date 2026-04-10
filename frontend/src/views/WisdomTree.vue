@@ -81,6 +81,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
 import MarkdownIt from 'markdown-it'
+import { isMarkdown } from '@/utils/fileTypes'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -99,12 +100,6 @@ const md = new MarkdownIt({
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
-}
-
-// 判断是否为 Markdown 文件
-const isMarkdown = (filename) => {
-  if (!filename) return false
-  return filename.toLowerCase().endsWith('.md') || filename.toLowerCase().endsWith('.markdown')
 }
 
 // 渲染内容（HTML 直接显示，Markdown 需要转换）
