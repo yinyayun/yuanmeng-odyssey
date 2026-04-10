@@ -198,6 +198,15 @@ const selectedAccountName = computed(() => {
   return account ? account.name : ''
 })
 
+// 获取选中账户的余额（家长/管理员使用选中账户，宝宝使用自己的账户）
+const targetBalance = computed(() => {
+  if (isParent.value && selectedAccountId.value) {
+    const account = childAccounts.value.find(a => a.id === selectedAccountId.value)
+    return account ? account.balance : 0
+  }
+  return accountStore.currentBalance
+})
+
 const getDefaultAvatar = (username) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
 }
@@ -294,7 +303,7 @@ const handleWithdraw = async () => {
   console.log('提取积分 - 开始', {
     isParent: isParent.value,
     selectedAccountId: selectedAccountId.value,
-    currentBalance: accountStore.currentBalance,
+    targetBalance: targetBalance.value,
     withdrawPoints: withdrawPoints.value
   })
   
@@ -302,9 +311,9 @@ const handleWithdraw = async () => {
     ElMessage.warning('请先选择宝宝账户')
     return
   }
-  // 检查积分是否足够
-  if (withdrawPoints.value > accountStore.currentBalance) {
-    ElMessage.warning(`积分不足，当前余额 ${accountStore.currentBalance}，需要 ${withdrawPoints.value}`)
+  // 检查积分是否足够（使用选中账户的余额）
+  if (withdrawPoints.value > targetBalance.value) {
+    ElMessage.warning(`积分不足，当前余额 ${targetBalance.value}，需要 ${withdrawPoints.value}`)
     return
   }
   withdrawLoading.value = true
