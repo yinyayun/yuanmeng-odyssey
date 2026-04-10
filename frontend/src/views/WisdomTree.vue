@@ -58,7 +58,7 @@
                 <el-icon><FullScreen /></el-icon> 全屏查看
               </el-button>
             </div>
-            <div class="html-content" v-html="fileContent"></div>
+            <div class="html-content" v-html="renderedContent"></div>
           </div>
           <el-empty v-else description="请选择文件查看内容" />
         </el-col>
@@ -72,7 +72,7 @@
       top="5vh"
       destroy-on-close
     >
-      <div class="fullscreen-content" v-html="fileContent"></div>
+      <div class="fullscreen-content" v-html="renderedContent"></div>
     </el-dialog>
   </div>
 </template>
@@ -80,6 +80,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
+import MarkdownIt from 'markdown-it'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -89,9 +90,31 @@ const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
 
+// 初始化 Markdown 渲染器
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
 }
+
+// 判断是否为 Markdown 文件
+const isMarkdown = (filename) => {
+  if (!filename) return false
+  return filename.toLowerCase().endsWith('.md') || filename.toLowerCase().endsWith('.markdown')
+}
+
+// 渲染内容（HTML 直接显示，Markdown 需要转换）
+const renderedContent = computed(() => {
+  if (!fileContent.value) return ''
+  if (currentFile.value && isMarkdown(currentFile.value.name)) {
+    return md.render(fileContent.value)
+  }
+  return fileContent.value
+})
 
 // 将文件树转换为级联选择器选项
 const cascaderOptions = computed(() => {
@@ -211,12 +234,171 @@ onUnmounted(() => {
   border-radius: 8px;
   min-height: 400px;
   overflow: auto;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+/* 优化 HTML 内容展示 */
+.html-content :deep(*) {
+  max-width: 100%;
+}
+
+.html-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.html-content :deep(h1),
+.html-content :deep(h2),
+.html-content :deep(h3),
+.html-content :deep(h4),
+.html-content :deep(h5),
+.html-content :deep(h6) {
+  margin: 20px 0 12px 0;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.html-content :deep(ul),
+.html-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.html-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.html-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.html-content :deep(th),
+.html-content :deep(td) {
+  border: 1px solid #dcdfe6;
+  padding: 12px;
+  text-align: left;
+}
+
+.html-content :deep(th) {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+
+.html-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 20px;
+  border-left: 4px solid #409eff;
+  background: #f5f7fa;
+  color: #606266;
+}
+
+.html-content :deep(pre) {
+  background: #f5f7fa;
+  padding: 16px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.html-content :deep(code) {
+  background: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.html-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 12px 0;
 }
 
 .fullscreen-content {
   min-height: 70vh;
-  padding: 20px;
+  padding: 30px;
   background: #fff;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+/* 全屏模式下的内容样式 */
+.fullscreen-content :deep(*) {
+  max-width: 100%;
+}
+
+.fullscreen-content :deep(p) {
+  margin: 14px 0;
+  line-height: 1.9;
+  font-size: 16px;
+}
+
+.fullscreen-content :deep(h1) {
+  font-size: 28px;
+  margin: 24px 0 16px 0;
+}
+
+.fullscreen-content :deep(h2) {
+  font-size: 24px;
+  margin: 22px 0 14px 0;
+}
+
+.fullscreen-content :deep(h3) {
+  font-size: 20px;
+  margin: 20px 0 12px 0;
+}
+
+.fullscreen-content :deep(ul),
+.fullscreen-content :deep(ol) {
+  margin: 14px 0;
+  padding-left: 28px;
+}
+
+.fullscreen-content :deep(li) {
+  margin: 10px 0;
+  line-height: 1.7;
+}
+
+.fullscreen-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 15px;
+}
+
+.fullscreen-content :deep(th),
+.fullscreen-content :deep(td) {
+  border: 1px solid #dcdfe6;
+  padding: 14px;
+  text-align: left;
+}
+
+.fullscreen-content :deep(th) {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+
+.fullscreen-content :deep(blockquote) {
+  margin: 20px 0;
+  padding: 16px 24px;
+  border-left: 4px solid #409eff;
+  background: #f5f7fa;
+  color: #606266;
+  font-size: 15px;
+}
+
+.fullscreen-content :deep(pre) {
+  background: #f5f7fa;
+  padding: 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 20px 0;
+  font-size: 14px;
 }
 
 .mobile-file-select {

@@ -127,7 +127,8 @@
                 size="large" 
                 style="width: 100%"
                 @click="handleWithdraw"
-                :disabled="!withdrawForm.ruleId || withdrawPoints > accountStore.currentBalance"
+                :disabled="!withdrawForm.ruleId"
+                :loading="withdrawLoading"
               >
                 确认提取
               </el-button>
@@ -185,7 +186,7 @@ const isMobile = ref(false)
 // 家长相关
 const isParent = computed(() => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  return user.role === 'parent'
+  return user.role === 'parent' || user.role === 'admin'
 })
 
 const childAccounts = ref([])
@@ -241,6 +242,8 @@ const withdrawForm = ref({
   description: ''
 })
 
+const withdrawLoading = ref(false)
+
 const earnRules = computed(() => 
   accountStore.rules.filter(r => r.type === 'earn')
 )
@@ -287,6 +290,12 @@ const handleWithdraw = async () => {
     ElMessage.warning('请先选择宝宝账户')
     return
   }
+  // 检查积分是否足够
+  if (withdrawPoints.value > accountStore.currentBalance) {
+    ElMessage.warning(`积分不足，当前余额 ${accountStore.currentBalance}，需要 ${withdrawPoints.value}`)
+    return
+  }
+  withdrawLoading.value = true
   try {
     await accountStore.withdraw({
       ruleId: withdrawForm.value.ruleId,
@@ -301,6 +310,8 @@ const handleWithdraw = async () => {
     await accountStore.fetchAccount()
   } catch (error) {
     ElMessage.error(error.message || '提取失败')
+  } finally {
+    withdrawLoading.value = false
   }
 }
 

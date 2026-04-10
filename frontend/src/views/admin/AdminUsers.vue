@@ -19,10 +19,10 @@
         </el-table-column>
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="username" label="用户名" />
-        <el-table-column prop="role" label="角色" width="100">
+        <el-table-column prop="role" label="角色" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.role === 'parent' ? 'danger' : 'success'">
-              {{ row.role === 'parent' ? '👨‍👩‍👧 家长' : '👶 宝宝' }}
+            <el-tag :type="getRoleType(row.role)">
+              {{ getRoleLabel(row.role) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -74,6 +74,7 @@
           <el-radio-group v-model="form.role">
             <el-radio label="parent">👨‍👩‍👧 家长</el-radio>
             <el-radio label="宝宝">👶 宝宝</el-radio>
+            <el-radio label="admin" disabled>🔧 管理员（不可创建）</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -178,6 +179,24 @@ const formatDate = (date) => {
 
 const getDefaultAvatar = (username) => {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
+}
+
+// 获取角色显示类型
+const getRoleType = (role) => {
+  switch (role) {
+    case 'admin': return 'warning'
+    case 'parent': return 'danger'
+    default: return 'success'
+  }
+}
+
+// 获取角色显示标签
+const getRoleLabel = (role) => {
+  switch (role) {
+    case 'admin': return '🔧 管理员'
+    case 'parent': return '👨‍👩‍👧 家长'
+    default: return '👶 宝宝'
+  }
 }
 
 const loadFamilies = async () => {
