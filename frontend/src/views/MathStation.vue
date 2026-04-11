@@ -59,10 +59,13 @@
               <h3>{{ currentFile.name }}</h3>
               <div class="file-actions">
                 <el-button type="primary" size="small" @click="openFullscreen" v-if="isTextFile(currentFile.name)">
-                  <el-icon><FullScreen /></el-icon> 全屏查看
+                  <el-icon><FullScreen /></el-icon> 全屏
                 </el-button>
-                <el-button type="info" size="small" @click="printFile" v-if="isTextFile(currentFile.name)">
-                  <el-icon><Printer /></el-icon> 打印/PDF
+                <el-button type="info" size="small" @click="printFile" v-if="isTextFile(currentFile.name) && !isMobile">
+                  <el-icon><Printer /></el-icon> 打印
+                </el-button>
+                <el-button type="warning" size="small" @click="exportPdf" v-if="isTextFile(currentFile.name)" :loading="pdfLoading">
+                  <el-icon><Document /></el-icon> PDF
                 </el-button>
                 <el-button type="primary" size="small" @click="previewFile" v-if="isPdf(currentFile.name)">
                   <el-icon><View /></el-icon> 预览
@@ -141,6 +144,7 @@ const previewUrl = ref('')
 const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
+const pdfLoading = ref(false)
 
 // 初始化 Markdown 渲染器
 const md = new MarkdownIt({
@@ -237,9 +241,56 @@ const downloadFile = () => {
   ElMessage.success('开始下载')
 }
 
-// 打印功能（浏览器打印为PDF）
+// 导出PDF功能（支持移动端和PC端）
+const exportPdf = async () => {
+  if (!currentFile.value || !isTextFile(currentFile.value.name)) return
+  
+  pdfLoading.value = true
+  try {
+    const element = document.querySelector('.html-content')
+    if (!element) {
+      ElMessage.warning('未找到内容区域')
+      return
+    }
+    
+    // 动态导入，减少首屏加载体积
+    const html2pdf = (await import('html2pdf.js')).default
+    
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `${currentFile.value.name.replace(/\.[^/.]+$/, '')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      }
+    }
+    
+    await html2pdf().set(opt).from(element).save()
+    ElMessage.success('PDF导出成功')
+  } catch (error) {
+    console.error('PDF导出失败', error)
+    ElMessage.error('PDF导出失败，请重试')
+  } finally {
+    pdfLoading.value = false
+  }
+}
+
+// 打印功能（仅PC端使用浏览器打印）
 const printFile = () => {
   if (!currentFile.value || !isTextFile(currentFile.value.name)) return
+  
+  // 移动端提示使用导出功能
+  if (isMobile.value) {
+    ElMessage.info('移动端请使用"PDF"按钮导出文件')
+    return
+  }
   
   // 创建打印窗口
   const printWindow = window.open('', '_blank')
@@ -568,12 +619,52 @@ onUnmounted(() => {
   }
   
   .content-preview {
-    padding: 10px;
+    padding: 8px;
   }
   
   .html-content {
-    padding: 10px;
+    padding: 16px;
     min-height: 300px;
+    font-size: 17px;
+    line-height: 2;
+  }
+  
+  .html-content :deep(p) {
+    margin: 16px 0;
+    line-height: 2;
+    font-size: 17px;
+  }
+  
+  .html-content :deep(h1) {
+    font-size: 22px;
+    margin: 24px 0 16px 0;
+  }
+  
+  .html-content :deep(h2) {
+    font-size: 20px;
+    margin: 22px 0 14px 0;
+  }
+  
+  .html-content :deep(h3) {
+    font-size: 18px;
+    margin: 20px 0 12px 0;
+  }
+  
+  .html-content :deep(li) {
+    margin: 10px 0;
+    line-height: 1.9;
+    font-size: 17px;
+  }
+  
+  .fullscreen-content {
+    padding: 20px;
+    font-size: 17px;
+    line-height: 2;
+  }
+  
+  .fullscreen-content :deep(p) {
+    font-size: 17px;
+    line-height: 2;
   }
   
   .file-info {
@@ -582,16 +673,22 @@ onUnmounted(() => {
     gap: 10px;
   }
   
-  .file-title h3 {
-    font-size: 16px;
+  .file-info h3 {
+    font-size: 15px;
+    word-break: break-all;
   }
   
   .file-actions {
     width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   
   .file-actions .el-button {
     flex: 1;
+    min-width: 60px;
+    padding: 6px 8px;
+    font-size: 12px;
   }
 }
 

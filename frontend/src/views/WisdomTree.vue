@@ -4,17 +4,28 @@
       <template #header>
         <div class="card-header">
           <span>智慧树洞</span>
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索..."
-            :style="{ width: isMobile ? '140px' : '200px' }"
-            size="small"
-            clearable
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
+          <div class="header-actions">
+            <el-button 
+              v-if="currentFile && isMobile" 
+              type="primary" 
+              size="small" 
+              @click="exportPdf"
+              :loading="pdfLoading"
+            >
+              <el-icon><Document /></el-icon> 导出PDF
+            </el-button>
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索..."
+              :style="{ width: isMobile ? '120px' : '200px' }"
+              size="small"
+              clearable
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </div>
         </div>
       </template>
 
@@ -82,6 +93,8 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
 import MarkdownIt from 'markdown-it'
 import { isMarkdown } from '@/utils/fileTypes'
+import { Search, FullScreen, Folder, Document } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -90,6 +103,7 @@ const searchKeyword = ref('')
 const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
+const pdfLoading = ref(false)
 
 // 初始化 Markdown 渲染器
 const md = new MarkdownIt({
@@ -166,6 +180,47 @@ const openFullscreen = () => {
   fullscreenVisible.value = true
 }
 
+// 导出PDF功能（支持移动端）
+const exportPdf = async () => {
+  if (!currentFile.value) return
+  
+  pdfLoading.value = true
+  try {
+    const element = document.querySelector('.html-content')
+    if (!element) {
+      ElMessage.warning('未找到内容区域')
+      return
+    }
+    
+    // 动态导入，减少首屏加载体积
+    const html2pdf = (await import('html2pdf.js')).default
+    
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `${currentFile.value.name.replace(/\.[^/.]+$/, '')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      }
+    }
+    
+    await html2pdf().set(opt).from(element).save()
+    ElMessage.success('PDF导出成功')
+  } catch (error) {
+    console.error('PDF导出失败', error)
+    ElMessage.error('PDF导出失败，请重试')
+  } finally {
+    pdfLoading.value = false
+  }
+}
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
@@ -187,6 +242,12 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .file-tree {
@@ -410,8 +471,12 @@ onUnmounted(() => {
     font-size: 16px;
   }
   
+  .header-actions {
+    gap: 8px;
+  }
+  
   .content-preview {
-    padding: 10px;
+    padding: 8px;
   }
   
   .file-info {
@@ -421,12 +486,53 @@ onUnmounted(() => {
   }
   
   .file-info h3 {
-    font-size: 16px;
+    font-size: 15px;
+    word-break: break-all;
   }
   
   .html-content {
-    padding: 10px;
+    padding: 16px;
     min-height: 300px;
+    font-size: 17px;
+    line-height: 2;
+  }
+  
+  .html-content :deep(p) {
+    margin: 16px 0;
+    line-height: 2;
+    font-size: 17px;
+  }
+  
+  .html-content :deep(h1) {
+    font-size: 22px;
+    margin: 24px 0 16px 0;
+  }
+  
+  .html-content :deep(h2) {
+    font-size: 20px;
+    margin: 22px 0 14px 0;
+  }
+  
+  .html-content :deep(h3) {
+    font-size: 18px;
+    margin: 20px 0 12px 0;
+  }
+  
+  .html-content :deep(li) {
+    margin: 10px 0;
+    line-height: 1.9;
+    font-size: 17px;
+  }
+  
+  .fullscreen-content {
+    padding: 20px;
+    font-size: 17px;
+    line-height: 2;
+  }
+  
+  .fullscreen-content :deep(p) {
+    font-size: 17px;
+    line-height: 2;
   }
 }
 
