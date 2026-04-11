@@ -67,6 +67,12 @@
                 <el-button type="warning" size="small" @click="exportPdf" v-if="isTextFile(currentFile.name)" :loading="pdfLoading">
                   <el-icon><Document /></el-icon> PDF
                 </el-button>
+                <el-button v-if="isTextFile(currentFile.name) && !isMobile" type="info" size="small" @click="saveAsImage" :loading="imageLoading">
+                  <el-icon><Picture /></el-icon> 导出图片
+                </el-button>
+                <el-button v-if="isTextFile(currentFile.name) && isWechat()" type="success" size="small" @click="saveAsImage" :loading="imageLoading">
+                  <el-icon><Picture /></el-icon> 生成长图
+                </el-button>
                 <el-button type="primary" size="small" @click="previewFile" v-if="isPdf(currentFile.name)">
                   <el-icon><View /></el-icon> 预览
                 </el-button>
@@ -133,7 +139,7 @@ import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { isPdf, isWord, isMarkdown, isHtml, isTextFile, getFileType } from '@/utils/fileTypes'
-import { FullScreen, View, Download, Folder, Document, Printer, Search } from '@element-plus/icons-vue'
+import { FullScreen, View, Download, Folder, Document, Printer, Search, Picture } from '@element-plus/icons-vue'
 
 const fileTree = ref([])
 const currentFile = ref(null)
@@ -145,6 +151,10 @@ const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
 const pdfLoading = ref(false)
+const imageLoading = ref(false)
+
+// 检测是否在微信内
+const isWechat = () => /MicroMessenger/i.test(navigator.userAgent)
 
 // 初始化 Markdown 渲染器
 const md = new MarkdownIt({
@@ -411,6 +421,46 @@ const printFile = () => {
   `)
   printWindow.document.close()
   ElMessage.success('已打开打印页面，点击"打印 / 保存为PDF"按钮即可')
+}
+
+// 生成长图（支持微信内分享）
+const saveAsImage = async () => {
+  if (!currentFile.value) return
+  
+  imageLoading.value = true
+  try {
+    const element = document.querySelector('.html-content')
+    if (!element) {
+      ElMessage.warning('未找到内容区域')
+      return
+    }
+    
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    })
+    
+    const link = document.createElement('a')
+    link.download = `${currentFile.value.name.replace(/\.[^/.]+$/, '')}.png`
+    link.href = canvas.toDataURL('image/png')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    if (isWechat()) {
+      ElMessage.success('图片已生成！请长按图片→「保存到相册」，再发送到好友')
+    } else {
+      ElMessage.success('导出图片成功')
+    }
+  } catch (error) {
+    console.error('生成图片失败', error)
+    ElMessage.error('生成图片失败，请重试')
+  } finally {
+    imageLoading.value = false
+  }
 }
 
 onMounted(() => {

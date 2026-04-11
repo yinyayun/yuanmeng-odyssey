@@ -5,15 +5,6 @@
         <div class="card-header">
           <span>智慧树洞</span>
           <div class="header-actions">
-            <el-button 
-              v-if="currentFile && isMobile" 
-              type="primary" 
-              size="small" 
-              @click="exportPdf"
-              :loading="pdfLoading"
-            >
-              <el-icon><Document /></el-icon> 导出PDF
-            </el-button>
             <el-input
               v-model="searchKeyword"
               placeholder="搜索..."
@@ -65,11 +56,58 @@
           <div class="content-preview" v-if="currentFile">
             <div class="file-info">
               <h3>{{ currentFile.name }}</h3>
-              <el-button type="primary" size="small" @click="openFullscreen">
-                <el-icon><FullScreen /></el-icon> 全屏查看
-              </el-button>
+              <div class="file-actions">
+                <!-- 文本文件操作按钮 -->
+                <template v-if="isTextFile(currentFile.name)">
+                  <el-button type="primary" size="small" @click="openFullscreen">
+                    <el-icon><FullScreen /></el-icon> {{ isMobile ? '' : '全屏' }}查看
+                  </el-button>
+                  <el-button type="warning" size="small" @click="exportPdf" :loading="pdfLoading">
+                    <el-icon><Document /></el-icon> {{ isMobile ? '' : '导出' }}PDF
+                  </el-button>
+                  <el-button v-if="!isMobile" type="info" size="small" @click="saveAsImage" :loading="imageLoading">
+                    <el-icon><Picture /></el-icon> 导出图片
+                  </el-button>
+                  <el-button v-if="isWechat()" type="success" size="small" @click="saveAsImage" :loading="imageLoading">
+                    <el-icon><Picture /></el-icon> 生成长图
+                  </el-button>
+                </template>
+                <!-- PDF文件操作按钮 -->
+                <template v-else-if="isPdf(currentFile.name)">
+                  <el-button type="primary" size="small" @click="previewFile">
+                    <el-icon><View /></el-icon> 预览
+                  </el-button>
+                  <el-button type="success" size="small" @click="downloadFile">
+                    <el-icon><Download /></el-icon> 下载
+                  </el-button>
+                </template>
+                <!-- 其他文件 -->
+                <template v-else>
+                  <el-button type="success" size="small" @click="downloadFile">
+                    <el-icon><Download /></el-icon> 下载
+                  </el-button>
+                </template>
+              </div>
             </div>
-            <div class="html-content" v-html="renderedContent"></div>
+            <!-- 文本内容展示 -->
+            <div v-if="isTextFile(currentFile.name)" class="html-content" v-html="renderedContent"></div>
+            <!-- PDF/Word 文件信息展示 -->
+            <div v-else-if="isPdf(currentFile.name)" class="file-meta">
+              <el-alert
+                title="点击「预览」在线查看 PDF，或「下载」保存到本地"
+                type="info"
+                :closable="false"
+                style="margin-bottom: 16px;"
+              />
+            </div>
+            <div v-else class="file-meta">
+              <el-alert
+                v-if="isWord(currentFile.name)"
+                title="Word 文件暂不支持在线预览，请下载后查看"
+                type="info"
+                :closable="false"
+              />
+            </div>
           </div>
           <el-empty v-else description="请选择文件查看内容" />
         </el-col>
@@ -85,6 +123,21 @@
     >
       <div class="fullscreen-content" v-html="renderedContent"></div>
     </el-dialog>
+
+    <!-- PDF 预览对话框 -->
+    <el-dialog
+      v-model="previewVisible"
+      :title="currentFile?.name"
+      width="90%"
+      top="5vh"
+      destroy-on-close
+    >
+      <iframe
+        v-if="previewUrl"
+        :src="previewUrl"
+        style="width: 100%; height: 70vh; border: none;"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -92,8 +145,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import request from '@/utils/request'
 import MarkdownIt from 'markdown-it'
-import { isMarkdown } from '@/utils/fileTypes'
-import { Search, FullScreen, Folder, Document } from '@element-plus/icons-vue'
+import { isMarkdown, isPdf, isWord, isTextFile } from '@/utils/fileTypes'
+import { Search, FullScreen, Folder, Document, Download, View, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const fileTree = ref([])
@@ -104,6 +157,12 @@ const fullscreenVisible = ref(false)
 const isMobile = ref(false)
 const selectedPath = ref([])
 const pdfLoading = ref(false)
+const previewVisible = ref(false)
+const previewUrl = ref('')
+const imageLoading = ref(false)
+
+// 检测是否在微信内
+const isWechat = () => /MicroMessenger/i.test(navigator.userAgent)
 
 // 初始化 Markdown 渲染器
 const md = new MarkdownIt({
@@ -167,17 +226,39 @@ const loadFileTree = async () => {
 const handleNodeClick = async (data) => {
   if (data.type === 'file') {
     currentFile.value = data
-    try {
-      const content = await request.get(`/files/content?path=${encodeURIComponent(data.path)}`)
-      fileContent.value = content
-    } catch (error) {
-      fileContent.value = '<p style="color: red">加载失败</p>'
+    fileContent.value = ''
+    // 只有文本文件才加载内容
+    if (isTextFile(data.name)) {
+      try {
+        const content = await request.get(`/files/content?path=${encodeURIComponent(data.path)}`)
+        fileContent.value = content
+      } catch (error) {
+        fileContent.value = '<p style="color: red">加载失败</p>'
+      }
     }
   }
 }
 
 const openFullscreen = () => {
   fullscreenVisible.value = true
+}
+
+const previewFile = () => {
+  if (!currentFile.value) return
+  previewUrl.value = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&type=growth-plans`
+  previewVisible.value = true
+}
+
+const downloadFile = () => {
+  if (!currentFile.value) return
+  const url = `/api/files/download?path=${encodeURIComponent(currentFile.value.path)}&type=growth-plans&download=true`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = currentFile.value.name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  ElMessage.success('开始下载')
 }
 
 // 导出PDF功能（支持移动端）
@@ -218,6 +299,46 @@ const exportPdf = async () => {
     ElMessage.error('PDF导出失败，请重试')
   } finally {
     pdfLoading.value = false
+  }
+}
+
+// 生成长图（支持微信内分享）
+const saveAsImage = async () => {
+  if (!currentFile.value) return
+  
+  imageLoading.value = true
+  try {
+    const element = document.querySelector('.html-content')
+    if (!element) {
+      ElMessage.warning('未找到内容区域')
+      return
+    }
+    
+    const html2canvas = (await import('html2canvas')).default
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    })
+    
+    const link = document.createElement('a')
+    link.download = `${currentFile.value.name.replace(/\.[^/.]+$/, '')}.png`
+    link.href = canvas.toDataURL('image/png')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    if (isWechat()) {
+      ElMessage.success('图片已生成！请长按图片→「保存到相册」，再发送到好友')
+    } else {
+      ElMessage.success('导出图片成功')
+    }
+  } catch (error) {
+    console.error('生成图片失败', error)
+    ElMessage.error('生成图片失败，请重试')
+  } finally {
+    imageLoading.value = false
   }
 }
 
@@ -282,6 +403,19 @@ onUnmounted(() => {
 .file-info h3 {
   margin: 0;
   color: #303133;
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.file-meta {
+  margin-top: 20px;
 }
 
 .html-content {
