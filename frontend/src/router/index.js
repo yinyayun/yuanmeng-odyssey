@@ -72,12 +72,6 @@ const routes = [
         name: 'MathStation',
         component: () => import('@/views/MathStation.vue'),
         meta: { title: '数能充电站', icon: 'TrendCharts' }
-      },
-      {
-        path: 'super-chat',
-        name: 'SuperChat',
-        component: () => import('@/views/SuperChat.vue'),
-        meta: { title: 'Luna 伙伴', icon: 'ChatDotRound' }
       }
     ]
   },
