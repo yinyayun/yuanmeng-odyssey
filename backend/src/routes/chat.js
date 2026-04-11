@@ -10,15 +10,17 @@ const router = express.Router()
 const getOpenClawConfig = async () => {
   const db = await getDb()
   const config = {
-    command: 'openclaw',  // 默认命令
-    model: 'default',     // 默认模型
-    timeout: 60000        // 超时时间 60s
+    command: 'openclaw',           // 默认命令
+    commandTemplate: '',           // 命令模板，为空时使用默认格式
+    model: 'default',              // 默认模型
+    timeout: 60000                 // 超时时间 60s
   }
   
   try {
     const settings = await db.all('SELECT key, value FROM settings WHERE key LIKE ?', ['openclaw-%'])
     settings.forEach(s => {
       if (s.key === 'openclaw-command') config.command = s.value
+      if (s.key === 'openclaw-command-template') config.commandTemplate = s.value
       if (s.key === 'openclaw-model') config.model = s.value
       if (s.key === 'openclaw-timeout') config.timeout = parseInt(s.value)
     })
@@ -128,10 +130,18 @@ router.post('/send', async (req, res) => {
     )
     
     // 调用 OpenClaw CLI 命令
-    // 注意:具体命令需要根据 OpenClaw 实际 CLI 接口调整
-    // 这里使用通用的 chat 命令格式
+    // OpenClaw 2026.3.28 支持的 AI 对话命令:
+    // openclaw agent --to <session> --message "xxx" --deliver
     const escapedMessage = message.replace(/"/g, '\\"').replace(/\$/g, '\\$')
-    const command = `${config.command} chat --session "${currentSessionId}" --message "${escapedMessage}"`
+    
+    // 从配置获取命令模板
+    // 默认使用: {command} agent --to "{session}" --message "{message}" --deliver
+    let commandTemplate = config.commandTemplate || '{command} agent --to "{session}" --message "{message}" --deliver'
+    
+    const command = commandTemplate
+      .replace('{command}', config.command)
+      .replace('{session}', currentSessionId)
+      .replace('{message}', escapedMessage)
     
     console.log('执行 OpenClaw 命令:', command)
     
