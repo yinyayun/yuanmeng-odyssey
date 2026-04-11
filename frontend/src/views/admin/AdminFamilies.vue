@@ -135,7 +135,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDate as formatDateUtil } from '@/utils/date.js'
 import request from '@/utils/request'
 
 const loading = ref(false)
@@ -186,7 +186,7 @@ const getDefaultAvatar = (username) => {
 
 const formatDate = (date) => {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN')
+  return formatDateUtil(date, 'YYYY-MM-DD')
 }
 
 const loadFamilies = async () => {

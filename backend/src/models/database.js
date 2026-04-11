@@ -92,6 +92,31 @@ export const initDatabase = async () => {
     )
   `)
   
+  // 创建聊天会话表
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS chat_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      session_id TEXT UNIQUE NOT NULL,
+      title TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(username)
+    )
+  `)
+  
+  // 创建聊天消息表
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES chat_sessions(session_id)
+    )
+  `)
+  
   // 创建家庭表
   await database.exec(`
     CREATE TABLE IF NOT EXISTS families (

@@ -45,7 +45,7 @@
         <el-table-column prop="size" label="大小" />
         <el-table-column prop="createdAt" label="备份时间">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
+            {{ formatDateTime(row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作">
@@ -61,15 +61,15 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import dayjs from 'dayjs'
+import { formatDate } from '@/utils/date.js'
 import request from '@/utils/request'
 
 const localLoading = ref(false)
 const gitLoading = ref(false)
 const backups = ref([])
 
-const formatDate = (date) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+const formatDateTime = (date) => {
+  return formatDate(date)
 }
 
 const handleLocalBackup = async () => {

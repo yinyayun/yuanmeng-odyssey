@@ -42,7 +42,7 @@
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="150">
           <template #default="{ row }">
-            {{ formatDate(row.created_at) }}
+            {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200">
@@ -118,7 +118,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import dayjs from 'dayjs'
+import { formatDate } from '@/utils/date.js'
 import request from '@/utils/request'
 
 const accounts = ref([])
@@ -169,8 +169,8 @@ const availableUsersForEdit = computed(() => {
   return users.value.filter(u => !boundUserIds.includes(u.id))
 })
 
-const formatDate = (date) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm')
+const formatDateTime = (date) => {
+  return formatDate(date, 'YYYY-MM-DD HH:mm')
 }
 
 const getDefaultAvatar = (username) => {

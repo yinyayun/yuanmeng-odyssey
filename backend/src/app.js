@@ -10,6 +10,7 @@ import fileRoutes from './routes/files.js'
 import backupRoutes from './routes/backup.js'
 import adminRoutes from './routes/admin.js'
 import settingsRoutes from './routes/settings.js'
+import chatRoutes from './routes/chat.js'
 import { initDatabase } from './models/database.js'
 import { authMiddleware } from './middleware/auth.js'
 
@@ -50,6 +51,7 @@ app.use('/api/transactions', authMiddleware, transactionRoutes)
 app.use('/api/files', authMiddleware, fileRoutes)
 app.use('/api/backup', authMiddleware, backupRoutes)
 app.use('/api/settings', authMiddleware, settingsRoutes)
+app.use('/api/chat', authMiddleware, chatRoutes)
 
 // 错误处理
 app.use((err, req, res, next) => {

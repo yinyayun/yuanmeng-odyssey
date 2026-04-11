@@ -196,7 +196,7 @@
 <script setup>
 import { computed, onMounted, ref, onUnmounted } from 'vue'
 import { useAccountStore } from '@/stores/account'
-import dayjs from 'dayjs'
+import { formatShortDate } from '@/utils/date.js'
 import request from '@/utils/request'
 
 const accountStore = useAccountStore()
@@ -285,7 +285,7 @@ const recentTransactions = computed(() =>
 )
 
 const formatDate = (date) => {
-  return dayjs(date).format('MM-DD HH:mm')
+  return formatShortDate(date)
 }
 
 onMounted(async () => {

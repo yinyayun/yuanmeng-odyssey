@@ -47,7 +47,7 @@
       <el-table :data="accountStore.transactions" stripe v-loading="loading">
         <el-table-column prop="createdAt" label="时间" width="180">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
+            {{ formatDateLocal(row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
@@ -114,7 +114,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useAccountStore } from '@/stores/account'
-import dayjs from 'dayjs'
+import { formatDate, formatDateOnly, nowDate, daysAgoDate } from '@/utils/date.js'
 import request from '@/utils/request'
 
 const accountStore = useAccountStore()
@@ -171,9 +171,7 @@ onUnmounted(() => {
 
 // 初始化默认日期范围（最近一周）
 const initDefaultDateRange = () => {
-  const end = dayjs()
-  const start = dayjs().subtract(6, 'day')
-  dateRange.value = [start.toDate(), end.toDate()]
+  dateRange.value = [daysAgoDate(6), nowDate()]
 }
 
 const loading = ref(false)
@@ -188,8 +186,8 @@ const stats = reactive({
   totalCount: 0
 })
 
-const formatDate = (date) => {
-  return dayjs(date).format('YYYY-MM-DD HH:mm')
+const formatDateLocal = (date) => {
+  return formatDate(date)
 }
 
 const loadData = async () => {
@@ -200,8 +198,9 @@ const loadData = async () => {
       pageSize: pageSize.value
     }
     if (dateRange.value && dateRange.value.length === 2) {
-      params.startDate = dayjs(dateRange.value[0]).format('YYYY-MM-DD')
-      params.endDate = dayjs(dateRange.value[1]).format('YYYY-MM-DD')
+      // Date 对象来自日期选择器，直接用 formatDateOnly 处理
+      params.startDate = formatDateOnly(dateRange.value[0])
+      params.endDate = formatDateOnly(dateRange.value[1])
     }
     // 家长查看指定宝宝账户
     if (isParent.value && selectedAccountId.value) {
