@@ -10,10 +10,19 @@ const getTargetAccount = async (db, req) => {
   const { accountId } = req.body
   const user = req.session.user
   
-  // 如果是家长或管理员且指定了账户ID，使用指定账户
+  // 如果是家长或管理员且指定了账户ID，使用指定账户（需验证家庭隔离）
   if ((user.role === 'parent' || user.role === 'admin') && accountId) {
-    const account = await db.get('SELECT * FROM accounts WHERE id = ?', [accountId])
+    const account = await db.get(`
+      SELECT a.* FROM accounts a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.id = ? AND (u.family_id = ? OR ? = 'admin')
+    `, [accountId, user.family_id, user.role])
     if (account) return account
+    
+    // 如果是非管理员且账户不属于当前家庭，返回错误
+    if (user.role !== 'admin') {
+      throw new Error('无权操作该账户')
+    }
   }
   
   // 否则使用当前用户关联的账户
@@ -42,6 +51,17 @@ router.get('/', authMiddleware, async (req, res) => {
         // 默认第一个账户
         const defaultAccount = await db.get('SELECT * FROM accounts LIMIT 1')
         targetAccountId = defaultAccount?.id
+      }
+    } else {
+      // 如果指定了账户ID，验证家庭隔离
+      const accountCheck = await db.get(`
+        SELECT a.* FROM accounts a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        WHERE a.id = ? AND (u.family_id = ? OR ? = 'admin')
+      `, [targetAccountId, user.family_id, user.role])
+      
+      if (!accountCheck && user.role !== 'admin') {
+        return res.status(403).json({ code: 403, message: '无权查看该账户的记录' })
       }
     }
     

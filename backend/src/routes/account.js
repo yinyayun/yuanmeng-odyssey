@@ -5,16 +5,31 @@ import { authMiddleware } from '../middleware/auth.js'
 
 const router = express.Router()
 
-// 获取所有账户（带用户信息）
+// 获取所有账户（带用户信息）- 仅返回当前家庭的账户
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const db = await getDb()
+    const user = req.session.user
+    
+    // 管理员可以看到所有家庭的账户
+    if (user.role === 'admin') {
+      const accounts = await db.all(`
+        SELECT a.*, u.name as user_name, u.username, u.avatar, u.family_id
+        FROM accounts a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        ORDER BY a.id
+      `)
+      return res.json({ code: 200, data: accounts })
+    }
+    
+    // 普通用户只能看到自己家庭的账户
     const accounts = await db.all(`
-      SELECT a.*, u.name as user_name, u.username, u.avatar 
+      SELECT a.*, u.name as user_name, u.username, u.avatar, u.family_id
       FROM accounts a 
       LEFT JOIN users u ON a.user_id = u.id 
+      WHERE u.family_id = ?
       ORDER BY a.id
-    `)
+    `, [user.family_id])
     res.json({ code: 200, data: accounts })
   } catch (error) {
     res.status(500).json({ code: 500, message: error.message })
@@ -50,11 +65,17 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     const { userId, name } = req.body
     const db = await getDb()
+    const currentUser = req.session.user
     
     // 检查用户是否存在
     const user = await db.get('SELECT * FROM users WHERE id = ?', [userId])
     if (!user) {
       return res.status(400).json({ code: 400, message: '用户不存在' })
+    }
+    
+    // 验证家庭隔离：普通用户只能为同家庭用户创建账户
+    if (currentUser.role !== 'admin' && user.family_id !== currentUser.family_id) {
+      return res.status(403).json({ code: 403, message: '无权为该用户创建账户' })
     }
     
     // 检查用户是否已有账户
@@ -87,6 +108,18 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const { id } = req.params
     const { name, balance, userId } = req.body
     const db = await getDb()
+    const currentUser = req.session.user
+    
+    // 验证账户是否存在且属于当前家庭（管理员除外）
+    const accountCheck = await db.get(`
+      SELECT a.* FROM accounts a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.id = ? AND (u.family_id = ? OR ? = 'admin')
+    `, [id, currentUser.family_id, currentUser.role])
+    
+    if (!accountCheck && currentUser.role !== 'admin') {
+      return res.status(403).json({ code: 403, message: '无权更新该账户' })
+    }
     
     // 如果提供了 userId，检查该用户是否已被其他账户绑定
     if (userId) {
@@ -96,6 +129,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
       )
       if (existing) {
         return res.status(400).json({ code: 400, message: '该用户已被其他账户绑定' })
+      }
+      
+      // 验证新用户的家庭隔离
+      const targetUser = await db.get('SELECT * FROM users WHERE id = ?', [userId])
+      if (targetUser && currentUser.role !== 'admin' && targetUser.family_id !== currentUser.family_id) {
+        return res.status(403).json({ code: 403, message: '无权绑定该用户' })
       }
     }
     
@@ -131,6 +170,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params
     const db = await getDb()
+    const currentUser = req.session.user
+    
+    // 验证账户是否存在且属于当前家庭（管理员除外）
+    const accountCheck = await db.get(`
+      SELECT a.* FROM accounts a 
+      LEFT JOIN users u ON a.user_id = u.id 
+      WHERE a.id = ? AND (u.family_id = ? OR ? = 'admin')
+    `, [id, currentUser.family_id, currentUser.role])
+    
+    if (!accountCheck && currentUser.role !== 'admin') {
+      return res.status(403).json({ code: 403, message: '无权删除该账户' })
+    }
+    
     await db.run('DELETE FROM accounts WHERE id = ?', [id])
     res.json({ code: 200, message: '删除成功' })
   } catch (error) {
@@ -155,6 +207,17 @@ router.get('/stats', authMiddleware, async (req, res) => {
       } else {
         const defaultAccount = await db.get('SELECT * FROM accounts LIMIT 1')
         targetAccountId = defaultAccount?.id
+      }
+    } else {
+      // 如果指定了账户ID，验证家庭隔离
+      const accountCheck = await db.get(`
+        SELECT a.* FROM accounts a 
+        LEFT JOIN users u ON a.user_id = u.id 
+        WHERE a.id = ? AND (u.family_id = ? OR ? = 'admin')
+      `, [targetAccountId, user.family_id, user.role])
+      
+      if (!accountCheck && user.role !== 'admin') {
+        return res.status(403).json({ code: 403, message: '无权查看该账户的统计' })
       }
     }
     
